@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { SearchProvider } from "@/components/layout/search-context";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { ROLE_LABELS } from "@/lib/constants/navigation";
 
 export default async function ProtectedLayout({
@@ -36,6 +37,7 @@ export default async function ProtectedLayout({
           </div>
         </main>
       </div>
+      <CommandPalette />
     </SearchProvider>
   );
 }

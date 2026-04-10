@@ -1,185 +1,533 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { motion } from "framer-motion";
-import {
-  Loader2,
-  Save,
-  Globe,
-  Mail,
-  Bell,
-  ShieldCheck,
-  FileText,
-} from "lucide-react";
-import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { CustomSelect } from "@/components/ui/custom-select";
+import {
+  Receipt,
+  Bell,
+  Shield,
+  Save,
+  Loader2,
+  Settings as SettingsIcon,
+} from "lucide-react";
+import { toast } from "sonner";
+import { getAllSettings, updateSetting } from "@/lib/actions/settings";
 
-const easeOut = "easeOut" as const;
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
 
-interface SettingGroup {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-  fields: { key: string; label: string; value: string; type?: string }[];
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: "easeOut" as const },
+  },
+};
+
+// Default values used when keys don't exist yet in global_settings.
+const DEFAULTS = {
+  nfe_max_retries: 3,
+  nfe_timeout_seconds: 60,
+  nfe_environment: "homologacao" as "producao" | "homologacao",
+  nfe_retry_on_transient: true,
+  notify_platform_enabled: true,
+  notify_email_enabled: false,
+  notify_alert_email: "",
+  notify_failure_threshold: 5,
+  security_session_ttl_hours: 24,
+  security_password_min_length: 8,
+  security_require_2fa: false,
+};
+
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="h-64 animate-pulse rounded-xl bg-muted/50 border border-border"
+        />
+      ))}
+    </div>
+  );
 }
 
-const initialGroups: SettingGroup[] = [
-  {
-    id: "general",
-    title: "Geral",
-    description: "Configurações gerais da plataforma.",
-    icon: Globe,
-    fields: [
-      { key: "platform_name", label: "Nome da plataforma", value: "Nexus NFE" },
-      { key: "support_email", label: "E-mail de suporte", value: "suporte@nexusai360.com" },
-    ],
-  },
-  {
-    id: "email",
-    title: "E-mail transacional",
-    description: "Configurações de envio de e-mails.",
-    icon: Mail,
-    fields: [
-      { key: "smtp_from", label: "Remetente", value: "Nexus NFE <noreply@nexusai360.com>" },
-      { key: "smtp_host", label: "Host SMTP", value: "smtp.resend.com" },
-    ],
-  },
-  {
-    id: "nfe",
-    title: "Emissão de NFe",
-    description: "Parâmetros da emissão via GOV.BR.",
-    icon: FileText,
-    fields: [
-      { key: "retry_attempts", label: "Tentativas em caso de falha", value: "3", type: "number" },
-      { key: "timeout_seconds", label: "Timeout (segundos)", value: "60", type: "number" },
-    ],
-  },
-  {
-    id: "notifications",
-    title: "Notificações",
-    description: "Canais e alertas da plataforma.",
-    icon: Bell,
-    fields: [
-      { key: "alert_email", label: "E-mail para alertas", value: "ops@nexusai360.com" },
-    ],
-  },
-  {
-    id: "security",
-    title: "Segurança",
-    description: "Política de senhas e sessões.",
-    icon: ShieldCheck,
-    fields: [
-      { key: "session_ttl_hours", label: "TTL da sessão (horas)", value: "24", type: "number" },
-      { key: "password_min_length", label: "Tamanho mínimo da senha", value: "8", type: "number" },
-    ],
-  },
-];
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-sm font-medium text-foreground/80 mb-1.5">
+      {children}
+    </label>
+  );
+}
+
+function FieldHint({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs text-muted-foreground mt-1">{children}</p>;
+}
+
+function readNumber(map: Record<string, unknown>, key: string, fallback: number): number {
+  const val = map[key];
+  if (typeof val === "number") return val;
+  if (typeof val === "string") {
+    const n = parseInt(val, 10);
+    return isNaN(n) ? fallback : n;
+  }
+  return fallback;
+}
+
+function readBoolean(map: Record<string, unknown>, key: string, fallback: boolean): boolean {
+  const val = map[key];
+  if (typeof val === "boolean") return val;
+  return fallback;
+}
+
+function readString(map: Record<string, unknown>, key: string, fallback: string): string {
+  const val = map[key];
+  if (typeof val === "string") return val;
+  return fallback;
+}
 
 export function SettingsContent() {
-  const [groups, setGroups] = useState<SettingGroup[]>(initialGroups);
-  const [savingGroup, setSavingGroup] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(true);
 
-  function handleFieldChange(groupId: string, key: string, value: string) {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.id === groupId
-          ? {
-              ...g,
-              fields: g.fields.map((f) => (f.key === key ? { ...f, value } : f)),
-            }
-          : g
-      )
-    );
+  // NFe section state
+  const [nfeMaxRetries, setNfeMaxRetries] = useState(DEFAULTS.nfe_max_retries);
+  const [nfeTimeout, setNfeTimeout] = useState(DEFAULTS.nfe_timeout_seconds);
+  const [nfeEnvironment, setNfeEnvironment] = useState<"producao" | "homologacao">(
+    DEFAULTS.nfe_environment
+  );
+  const [nfeRetryTransient, setNfeRetryTransient] = useState(
+    DEFAULTS.nfe_retry_on_transient
+  );
+  const [savingNfe, startSavingNfe] = useTransition();
+
+  // Notifications section state
+  const [notifyPlatform, setNotifyPlatform] = useState(DEFAULTS.notify_platform_enabled);
+  const [notifyEmail, setNotifyEmail] = useState(DEFAULTS.notify_email_enabled);
+  const [notifyAlertEmail, setNotifyAlertEmail] = useState(DEFAULTS.notify_alert_email);
+  const [notifyThreshold, setNotifyThreshold] = useState(DEFAULTS.notify_failure_threshold);
+  const [savingNotify, startSavingNotify] = useTransition();
+
+  // Security section state
+  const [sessionTtlHours, setSessionTtlHours] = useState(
+    DEFAULTS.security_session_ttl_hours
+  );
+  const [passwordMinLength, setPasswordMinLength] = useState(
+    DEFAULTS.security_password_min_length
+  );
+  const [require2fa, setRequire2fa] = useState(DEFAULTS.security_require_2fa);
+  const [savingSecurity, startSavingSecurity] = useTransition();
+
+  useEffect(() => {
+    async function load() {
+      const result = await getAllSettings();
+      if (result.success && result.data) {
+        const d = result.data;
+        setNfeMaxRetries(readNumber(d, "nfe_max_retries", DEFAULTS.nfe_max_retries));
+        setNfeTimeout(readNumber(d, "nfe_timeout_seconds", DEFAULTS.nfe_timeout_seconds));
+        const env = readString(d, "nfe_environment", DEFAULTS.nfe_environment);
+        setNfeEnvironment(env === "producao" ? "producao" : "homologacao");
+        setNfeRetryTransient(
+          readBoolean(d, "nfe_retry_on_transient", DEFAULTS.nfe_retry_on_transient)
+        );
+        setNotifyPlatform(
+          readBoolean(d, "notify_platform_enabled", DEFAULTS.notify_platform_enabled)
+        );
+        setNotifyEmail(readBoolean(d, "notify_email_enabled", DEFAULTS.notify_email_enabled));
+        setNotifyAlertEmail(
+          readString(d, "notify_alert_email", DEFAULTS.notify_alert_email)
+        );
+        setNotifyThreshold(
+          readNumber(d, "notify_failure_threshold", DEFAULTS.notify_failure_threshold)
+        );
+        setSessionTtlHours(
+          readNumber(d, "security_session_ttl_hours", DEFAULTS.security_session_ttl_hours)
+        );
+        setPasswordMinLength(
+          readNumber(
+            d,
+            "security_password_min_length",
+            DEFAULTS.security_password_min_length
+          )
+        );
+        setRequire2fa(
+          readBoolean(d, "security_require_2fa", DEFAULTS.security_require_2fa)
+        );
+      } else {
+        toast.error("Erro ao carregar configurações");
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function saveMany(entries: Array<[string, unknown]>): Promise<boolean> {
+    for (const [key, value] of entries) {
+      const r = await updateSetting(key, value);
+      if (!r.success) {
+        toast.error(r.error || "Erro ao salvar");
+        return false;
+      }
+    }
+    return true;
   }
 
-  function handleSave(groupId: string) {
-    setSavingGroup(groupId);
-    startTransition(async () => {
-      try {
-        // Placeholder: integrar server action de settings quando disponível
-        await new Promise((r) => setTimeout(r, 600));
-        toast.success("Configurações salvas!");
-      } catch {
-        toast.error("Erro ao salvar configurações.");
-      } finally {
-        setSavingGroup(null);
-      }
+  function handleSaveNfe() {
+    startSavingNfe(async () => {
+      const ok = await saveMany([
+        ["nfe_max_retries", nfeMaxRetries],
+        ["nfe_timeout_seconds", nfeTimeout],
+        ["nfe_environment", nfeEnvironment],
+        ["nfe_retry_on_transient", nfeRetryTransient],
+      ]);
+      if (ok) toast.success("Configurações de emissão salvas");
+    });
+  }
+
+  function handleSaveNotify() {
+    startSavingNotify(async () => {
+      const ok = await saveMany([
+        ["notify_platform_enabled", notifyPlatform],
+        ["notify_email_enabled", notifyEmail],
+        ["notify_alert_email", notifyAlertEmail],
+        ["notify_failure_threshold", notifyThreshold],
+      ]);
+      if (ok) toast.success("Configurações de notificações salvas");
+    });
+  }
+
+  function handleSaveSecurity() {
+    startSavingSecurity(async () => {
+      const ok = await saveMany([
+        ["security_session_ttl_hours", sessionTtlHours],
+        ["security_password_min_length", passwordMinLength],
+        ["security_require_2fa", require2fa],
+      ]);
+      if (ok) toast.success("Configurações de segurança salvas");
     });
   }
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: easeOut }}
-      >
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Configurações</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Gerencie as configurações globais da plataforma. Apenas Super Admins têm acesso.
-        </p>
-      </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {groups.map((group, idx) => {
-          const Icon = group.icon;
-          return (
-            <motion.div
-              key={group.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: idx * 0.05, ease: easeOut }}
-            >
-              <Card>
-                <CardHeader>
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shrink-0">
-                      <Icon className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <CardTitle>{group.title}</CardTitle>
-                      <CardDescription>{group.description}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {group.fields.map((field) => (
-                    <div key={field.key} className="space-y-2">
-                      <Label htmlFor={`${group.id}-${field.key}`}>{field.label}</Label>
-                      <Input
-                        id={`${group.id}-${field.key}`}
-                        type={field.type || "text"}
-                        value={field.value}
-                        onChange={(e) => handleFieldChange(group.id, field.key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-                  <Button
-                    type="button"
-                    onClick={() => handleSave(group.id)}
-                    disabled={isPending && savingGroup === group.id}
-                  >
-                    {isPending && savingGroup === group.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Salvando...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" /> Salvar
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
+    <div>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-600/10 border border-violet-600/20">
+            <SettingsIcon className="h-5 w-5 text-violet-500" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              Configurações
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Configurações globais da plataforma. Apenas Super Admin tem acesso.
+            </p>
+          </div>
+        </div>
       </div>
+
+      {loading ? (
+        <SettingsSkeleton />
+      ) : (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-6"
+        >
+          {/* Emissão de NFe */}
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Receipt className="h-4 w-4 text-violet-500" />
+                  Emissão de NFe
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <FieldLabel>Máximo de tentativas</FieldLabel>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={nfeMaxRetries}
+                      onChange={(e) =>
+                        setNfeMaxRetries(
+                          Math.min(10, Math.max(0, parseInt(e.target.value) || 0))
+                        )
+                      }
+                      className="bg-muted/50 border-border text-foreground"
+                    />
+                    <FieldHint>
+                      Número máximo de vezes que o sistema tentará reemitir uma NFe que falhou (0-10)
+                    </FieldHint>
+                  </div>
+
+                  <div>
+                    <FieldLabel>Timeout por emissão (segundos)</FieldLabel>
+                    <Input
+                      type="number"
+                      min={30}
+                      max={300}
+                      value={nfeTimeout}
+                      onChange={(e) =>
+                        setNfeTimeout(
+                          Math.min(300, Math.max(30, parseInt(e.target.value) || 30))
+                        )
+                      }
+                      className="bg-muted/50 border-border text-foreground"
+                    />
+                    <FieldHint>
+                      Tempo máximo de espera por resposta do GOV.BR por emissão (30-300s)
+                    </FieldHint>
+                  </div>
+
+                  <div>
+                    <FieldLabel>Ambiente</FieldLabel>
+                    <CustomSelect
+                      value={nfeEnvironment}
+                      onChange={(val) =>
+                        setNfeEnvironment(val as "producao" | "homologacao")
+                      }
+                      options={[
+                        {
+                          value: "homologacao",
+                          label: "Homologação",
+                          description: "Ambiente de testes — não gera efeitos fiscais",
+                        },
+                        {
+                          value: "producao",
+                          label: "Produção",
+                          description: "Ambiente real — NFes emitidas têm valor fiscal",
+                        },
+                      ]}
+                    />
+                    <FieldHint>
+                      Selecione o ambiente que a plataforma usará para emitir NFes
+                    </FieldHint>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <FieldLabel>Retentar em falha transitória</FieldLabel>
+                      <FieldHint>
+                        Reemite automaticamente quando o erro é transitório (rede, timeout, 5xx)
+                      </FieldHint>
+                    </div>
+                    <Switch
+                      checked={nfeRetryTransient}
+                      onCheckedChange={setNfeRetryTransient}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveNfe}
+                    disabled={savingNfe}
+                    className="bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200"
+                  >
+                    {savingNfe ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Salvar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Notificações */}
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Bell className="h-4 w-4 text-violet-500" />
+                  Notificações
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground/80">
+                        Notificações na plataforma
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Alertas dentro do painel
+                      </p>
+                    </div>
+                    <Switch
+                      checked={notifyPlatform}
+                      onCheckedChange={setNotifyPlatform}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground/80">
+                        Notificações por e-mail
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Enviar alertas por e-mail
+                      </p>
+                    </div>
+                    <Switch
+                      checked={notifyEmail}
+                      onCheckedChange={setNotifyEmail}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                  <div>
+                    <FieldLabel>E-mail para alertas</FieldLabel>
+                    <Input
+                      type="email"
+                      value={notifyAlertEmail}
+                      onChange={(e) => setNotifyAlertEmail(e.target.value)}
+                      placeholder="alertas@exemplo.com"
+                      className="bg-muted/50 border-border text-foreground"
+                    />
+                    <FieldHint>
+                      Endereço que receberá alertas críticos da plataforma
+                    </FieldHint>
+                  </div>
+
+                  <div>
+                    <FieldLabel>Threshold de falhas</FieldLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={notifyThreshold}
+                      onChange={(e) =>
+                        setNotifyThreshold(
+                          Math.min(100, Math.max(1, parseInt(e.target.value) || 1))
+                        )
+                      }
+                      className="bg-muted/50 border-border text-foreground"
+                    />
+                    <FieldHint>
+                      Quantidade de falhas consecutivas para disparar alerta
+                    </FieldHint>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveNotify}
+                    disabled={savingNotify}
+                    className="bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200"
+                  >
+                    {savingNotify ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Salvar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Segurança */}
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Shield className="h-4 w-4 text-violet-500" />
+                  Segurança
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <FieldLabel>TTL da sessão (horas)</FieldLabel>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={720}
+                      value={sessionTtlHours}
+                      onChange={(e) =>
+                        setSessionTtlHours(
+                          Math.min(720, Math.max(1, parseInt(e.target.value) || 1))
+                        )
+                      }
+                      className="bg-muted/50 border-border text-foreground"
+                    />
+                    <FieldHint>
+                      Duração da sessão do usuário antes de exigir novo login
+                    </FieldHint>
+                  </div>
+
+                  <div>
+                    <FieldLabel>Tamanho mínimo da senha</FieldLabel>
+                    <Input
+                      type="number"
+                      min={6}
+                      max={64}
+                      value={passwordMinLength}
+                      onChange={(e) =>
+                        setPasswordMinLength(
+                          Math.min(64, Math.max(6, parseInt(e.target.value) || 8))
+                        )
+                      }
+                      className="bg-muted/50 border-border text-foreground"
+                    />
+                    <FieldHint>
+                      Número mínimo de caracteres exigido nas senhas dos usuários
+                    </FieldHint>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2 md:col-span-2">
+                    <div>
+                      <FieldLabel>Exigir 2FA (futuro)</FieldLabel>
+                      <FieldHint>
+                        Quando disponível, obrigará autenticação em dois fatores para todos os usuários
+                      </FieldHint>
+                    </div>
+                    <Switch
+                      checked={require2fa}
+                      onCheckedChange={setRequire2fa}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveSecurity}
+                    disabled={savingSecurity}
+                    className="bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200"
+                  >
+                    {savingSecurity ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Salvar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

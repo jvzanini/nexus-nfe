@@ -1,0 +1,193 @@
+// Schema Prisma — Nexus NFE
+// Gerado via Blueprint Nexus AI
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS BASE
+// ============================================================
+
+enum PlatformRole {
+  super_admin
+  admin
+  manager
+  viewer
+}
+
+enum Theme {
+  dark
+  light
+  system
+}
+
+enum ActorType {
+  user
+  system
+}
+
+enum NotificationType {
+  error
+  warning
+  info
+}
+
+enum OutboxStatus {
+  pending
+  publishing
+  published
+  failed
+}
+
+// ============================================================
+// CORE — User, Tokens
+// ============================================================
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  email        String       @unique
+  password     String
+  platformRole PlatformRole @default(viewer) @map("platform_role")
+  isSuperAdmin Boolean      @default(false) @map("is_super_admin")
+  avatarUrl    String?      @map("avatar_url")
+  theme        Theme        @default(dark)
+  isActive     Boolean      @default(true) @map("is_active")
+  invitedById  String?      @map("invited_by") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  invitedBy           User?                @relation("UserInvites", fields: [invitedById], references: [id])
+  invitees            User[]               @relation("UserInvites")
+  notifications       Notification[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  passwordResetTokens PasswordResetToken[]
+  emailChangeTokens   EmailChangeToken[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token], name: "idx_reset_token")
+  @@index([userId, createdAt(sort: Desc)], name: "idx_reset_user")
+  @@map("password_reset_tokens")
+}
+
+model EmailChangeToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  newEmail  String    @map("new_email")
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token], name: "idx_email_change_token")
+  @@index([userId, createdAt(sort: Desc)], name: "idx_email_change_user")
+  @@map("email_change_tokens")
+}
+
+// ============================================================
+// MÓDULO: Notifications
+// ============================================================
+
+model Notification {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String?          @map("user_id") @db.Uuid
+  type         NotificationType
+  title        String
+  message      String
+  link         String
+  channelsSent Json             @map("channels_sent") @db.JsonB
+  isRead       Boolean          @default(false) @map("is_read")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, isRead, createdAt(sort: Desc)], name: "idx_notification_user_read")
+  @@map("notifications")
+}
+
+// ============================================================
+// MÓDULO: Audit Log
+// ============================================================
+
+model AuditLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  actorType    ActorType @map("actor_type")
+  actorId      String?   @map("actor_id") @db.Uuid
+  actorLabel   String    @map("actor_label")
+  action       String
+  resourceType String    @map("resource_type")
+  resourceId   String?   @map("resource_id") @db.Uuid
+  details      Json      @db.JsonB
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt(sort: Desc)], name: "idx_audit_created")
+  @@index([resourceType, resourceId], name: "idx_audit_resource")
+  @@map("audit_logs")
+}
+
+// ============================================================
+// PATTERN: Settings
+// ============================================================
+
+model GlobalSettings {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     Json     @db.JsonB
+  updatedBy String   @map("updated_by") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("global_settings")
+}
+
+// ============================================================
+// PATTERN: Outbox (eventos transacionais)
+// ============================================================
+
+model OutboxEvent {
+  id          String       @id @default(uuid()) @db.Uuid
+  aggregateId String       @map("aggregate_id") @db.Uuid
+  eventType   String       @map("event_type")
+  payload     Json         @db.JsonB
+  status      OutboxStatus @default(pending)
+  attempts    Int          @default(0)
+  lastError   String?      @map("last_error")
+  publishedAt DateTime?    @map("published_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([status, createdAt], name: "idx_outbox_status_created")
+  @@index([aggregateId], name: "idx_outbox_aggregate")
+  @@map("outbox_events")
+}
+
+// ============================================================
+// DOMÍNIO — NFE MEI (esqueleto, será expandido na Fase 2)
+// ============================================================
+// Os modelos de Cliente MEI, NFe emitida, credenciais GOV.BR, etc
+// serão adicionados quando brainstormamos a fase 2 (emissão).
+// Por enquanto só o esqueleto com auth/users funciona.

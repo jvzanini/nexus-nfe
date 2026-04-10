@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { ToasterProvider } from "@/components/providers/toaster-provider";
+import { Inter, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "@/components/providers/theme-provider";
+import { getResolvedThemeFromCookie } from "@/lib/theme";
 import { APP_CONFIG } from "@/lib/app.config";
 import "./globals.css";
 
-const geistSans = Geist({
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
 });
@@ -23,22 +24,25 @@ export const metadata: Metadata = {
   description: APP_CONFIG.description,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const resolvedTheme = await getResolvedThemeFromCookie();
+
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${geistMono.variable} ${resolvedTheme} h-full antialiased`}
+      style={{ colorScheme: resolvedTheme }}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>
+        <Providers initialTheme={resolvedTheme}>
           {children}
-          <ToasterProvider />
-        </ThemeProvider>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

@@ -22,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { NAV_ITEMS } from "@/lib/constants/navigation";

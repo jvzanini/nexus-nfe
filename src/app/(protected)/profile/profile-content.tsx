@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Save, Camera, Sun, Moon, Monitor, KeyRound, Mail, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/providers/theme-provider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -35,10 +35,10 @@ const ROLE_LABELS: Record<Role, string> = {
   viewer: "Visualizador",
 };
 
-const ROLE_VARIANTS: Record<Role, "default" | "secondary" | "success" | "warning"> = {
-  super_admin: "warning",
+const ROLE_VARIANTS: Record<Role, "default" | "secondary" | "destructive" | "outline"> = {
+  super_admin: "destructive",
   admin: "default",
-  manager: "success",
+  manager: "outline",
   viewer: "secondary",
 };
 

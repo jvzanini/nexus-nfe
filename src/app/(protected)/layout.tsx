@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
-import { ThemeInitializer } from "@/components/providers/theme-initializer";
 
 export default async function ProtectedLayout({
   children,
@@ -23,7 +22,6 @@ export default async function ProtectedLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <ThemeInitializer userTheme={(user as { theme?: "dark" | "light" | "system" }).theme ?? null} />
       <Sidebar user={sidebarUser} />
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl px-4 pt-16 pb-8 sm:px-6 sm:pt-8 sm:pb-8 lg:px-8">

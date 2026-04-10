@@ -23,6 +23,25 @@ export interface UserListItem {
   canDelete: boolean;
 }
 
+/**
+ * Shape compatível com o users-content (adaptado do projeto de referência).
+ * Em single-tenant `companiesCount` fica sempre 0.
+ */
+export interface UserItem {
+  id: string;
+  name: string;
+  email: string;
+  platformRole: PlatformRole;
+  /** Label amigável (ex: "Super Admin", "Gerente"...). */
+  highestRole: string;
+  isActive: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  avatarUrl: string | null;
+  createdAt: Date;
+  companiesCount: number;
+}
+
 type ActionResult<T = unknown> = {
   success: boolean;
   data?: T;
@@ -321,6 +340,32 @@ export async function toggleUserRole(
 
 /** Alias de toggleUserRole (compatibilidade com UI). */
 export const updateUserRole = toggleUserRole;
+
+/**
+ * Alias de listUsers retornando o shape `UserItem` (compatível com o
+ * users-content do projeto de referência). Em single-tenant `companiesCount`
+ * é sempre 0.
+ */
+export async function getUsers(): Promise<ActionResult<UserItem[]>> {
+  const result = await listUsers();
+  if (!result.success || !result.data) {
+    return { success: false, error: result.error };
+  }
+  const mapped: UserItem[] = result.data.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    platformRole: u.platformRole,
+    highestRole: u.platformRoleLabel,
+    isActive: u.isActive,
+    canEdit: u.canEdit,
+    canDelete: u.canDelete,
+    avatarUrl: u.avatarUrl,
+    createdAt: u.createdAt,
+    companiesCount: 0,
+  }));
+  return { success: true, data: mapped };
+}
 
 // Re-exporta getCurrentUser para conveniência em components
 export { getCurrentUser };

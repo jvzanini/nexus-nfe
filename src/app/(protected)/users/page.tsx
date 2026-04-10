@@ -1,15 +1,19 @@
 import { redirect } from "next/navigation";
-import { requireRole } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { UsersContent } from "./users-content";
 
 export const metadata = { title: "Usuários" };
 
 export default async function UsersPage() {
-  const user = await requireRole(["admin", "super_admin"]);
-
-  if (!user) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (user.platformRole !== "super_admin" && user.platformRole !== "admin") {
     redirect("/dashboard");
   }
-
-  return <UsersContent currentRole={user.role} />;
+  return (
+    <UsersContent
+      isSuperAdmin={user.platformRole === "super_admin"}
+      currentUserId={user.id}
+    />
+  );
 }

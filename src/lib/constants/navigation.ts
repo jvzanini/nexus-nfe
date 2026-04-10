@@ -1,46 +1,71 @@
-// Navigation — itens do menu principal com controle por role
+// Configuração centralizada de navegação
+// Usado por: sidebar
+
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 
 import type { PlatformRole } from "@/generated/prisma/client";
 
 export interface NavItem {
-  href: string;
   label: string;
-  /** Nome do ícone no pacote lucide-react (ex: "LayoutDashboard") */
-  icon: string;
-  /** Roles que enxergam esse item. Vazio/undefined = todos autenticados. */
-  roles?: PlatformRole[];
+  href: string;
+  icon: LucideIcon;
+  /** Roles que podem ver este item. Se undefined, todos veem */
+  allowedRoles?: string[];
 }
 
-export const NAV_ITEMS: NavItem[] = [
+export const MAIN_NAV_ITEMS: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Notas Fiscais", href: "/nfe", icon: FileText },
+];
+
+export const RESTRICTED_NAV_ITEMS: NavItem[] = [
   {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: "LayoutDashboard",
-    roles: ["super_admin", "admin", "manager", "viewer"],
-  },
-  {
-    href: "/users",
     label: "Usuários",
-    icon: "Users",
-    roles: ["super_admin", "admin"],
+    href: "/users",
+    icon: Users,
+    allowedRoles: ["super_admin", "admin"],
   },
   {
-    href: "/settings",
     label: "Configurações",
-    icon: "Settings",
-    roles: ["super_admin"],
-  },
-  {
-    href: "/profile",
-    label: "Perfil",
-    icon: "User",
-    roles: ["super_admin", "admin", "manager", "viewer"],
+    href: "/settings",
+    icon: Settings,
+    allowedRoles: ["super_admin"],
   },
 ];
 
+/** Retorna todos os itens de navegação visíveis para o role */
+export function getNavItems(platformRole: string): NavItem[] {
+  const restricted = RESTRICTED_NAV_ITEMS.filter(
+    (item) => !item.allowedRoles || item.allowedRoles.includes(platformRole)
+  );
+  return [...MAIN_NAV_ITEMS, ...restricted];
+}
+
 /**
- * Retorna apenas os itens visíveis para o role informado.
+ * Labels amigáveis por role — usado no layout protegido para exibir o "cargo"
+ * do usuário logado na sidebar.
+ */
+export const ROLE_LABELS: Record<PlatformRole, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  manager: "Gerente",
+  viewer: "Visualizador",
+};
+
+/**
+ * @deprecated Use getNavItems(). Mantido como compatibilidade — em breve removido.
+ */
+export const NAV_ITEMS = [...MAIN_NAV_ITEMS, ...RESTRICTED_NAV_ITEMS];
+
+/**
+ * @deprecated Use getNavItems().
  */
 export function getNavItemsForRole(role: PlatformRole): NavItem[] {
-  return NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role));
+  return getNavItems(role);
 }

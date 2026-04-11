@@ -65,11 +65,53 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
 - **queue:** BullMQ worker pra processamento assíncrono de emissão NFE
 - **outbox:** Eventos transacionais confiáveis
 
-## Fase 1 — Esqueleto (atual)
-Login, Users, Profile, Dashboard, Settings. Sem lógica de emissão ainda.
+## Estado atual (2026-04-10)
 
-## Fase 2 — Motor de Emissão NFE MEI (a brainstormar)
-Pesquisar: API oficial do GOV.BR / Receita Federal pra emissão de NFe MEI no DF. Se não houver API, avaliar automação (Playwright) pra navegação no painel do GOV.BR. Modelar: Cliente MEI (CNPJ, credenciais), NFe (produto/serviço, valor, status), histórico de emissões.
+### Concluído
+- ✅ Fase 1 — Esqueleto (login, users, profile, dashboard, settings, sidebar com command palette funcional)
+- ✅ **Fase -1 — Spike Técnico NFS-e** (37 testes passando + sanity check end-to-end OK)
+  - Parser PKCS#12 (3DES e AES-256)
+  - Geração de idDps (45 chars)
+  - XML builder validado contra XSD oficial
+  - Assinatura XMLDSIG verificada por `xmlsec1`
+  - Empacotamento GZip+Base64
+  - Orquestrador `prepareSubmission`
+  - Endpoints SEFIN e ADN confirmados vivos (mTLS obrigatório)
+
+### Em andamento: Fase 1A — Cadastro MEI + Upload de certificado
+Próxima coisa a fazer quando retomar. Plano detalhado em:
+`docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
+
+### Bloqueios externos pra Fase 3 (submit real)
+1. Adesão gov.br nível Ouro de CNPJ de teste ao Sistema Nacional NFS-e
+2. Certificado A1 ICP-Brasil (real ou de teste)
+
+### Decisão técnica: integração direta com gov.br/nfse (sem gateway pago)
+- Custo zero pra plataforma (API oficial é gratuita)
+- Cada MEI traz seu próprio certificado A1 (armazenado cifrado via módulo encryption)
+- Emissão síncrona via `POST /nfse`, reconciliação via `HEAD /dps/{id}`
+- DANFS-e PDF: fonte ainda a confirmar (provavelmente via ADN)
+- Endpoints:
+  - Homolog: `https://sefin.producaorestrita.nfse.gov.br/SefinNacional`
+  - Prod: `https://sefin.nfse.gov.br/SefinNacional`
+
+### Bug documentado no schema oficial
+`tiposSimples_v1.01.xsd` tem pattern `^0{0,4}\d{1,5}$` em TSSerieDPS, onde `^` e `$` são interpretados como literais em W3C XSD regex. Workaround: cópia patched em `docs/nfse/reference/schemas-patched/`. Ver `docs/nfse/reference/spike-findings.md`.
+
+## Código NFS-e (spike)
+Tudo em `src/lib/nfse/`:
+- `types.ts` — tipos alinhados ao XSD oficial v1.01
+- `constants.ts` — URLs homolog/prod + constantes MEI
+- `dps-id.ts` — buildIdDps(45 chars) + validação
+- `pfx-loader.ts` — parser PKCS#12 via node-forge
+- `xml-builder.ts` — serialização DPS (xmlbuilder2)
+- `xml-signer.ts` — XMLDSIG (xml-crypto)
+- `pack.ts` — GZip + Base64
+- `prepare-submission.ts` — orquestrador build+sign+pack
+- `__tests__/` — 6 arquivos, 37 testes, incluindo validação via xmllint e xmlsec1
+
+Rodar os testes: `npm test`
+Rodar sanity check end-to-end: `npx tsx scripts/nfse-sanity-check.ts`
 
 ## Regras
 - Todo serviço sobe como container Docker

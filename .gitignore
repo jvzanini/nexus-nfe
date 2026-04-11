@@ -43,3 +43,10 @@ yarn-error.log*
 
 # worker bundle
 worker-bundle.js
+
+# NFS-e reference binaries (baixados do portal gov.br/nfse; muito grandes)
+docs/nfse/reference/*.pdf
+docs/nfse/reference/*.xlsx
+docs/nfse/reference/*.zip
+docs/nfse/reference/fixtures/*.pfx
+src/lib/nfse/__tests__/fixtures/last-failed-*.xml

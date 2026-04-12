@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Table,
@@ -12,9 +13,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { FileText, Plus, Loader2, Search, Filter, X } from "lucide-react";
 import { toast } from "sonner";
-import { listarNfses, type NfseListItem } from "@/lib/actions/nfse";
+import { listarNfsesComFiltros, type NfseFilters, type NfseListItem } from "@/lib/actions/nfse";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -103,9 +105,14 @@ function formatCurrency(value: string) {
 export function NfseContent() {
   const [nfses, setNfses] = useState<NfseListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
 
   async function loadNfses() {
-    const result = await listarNfses();
+    const filters: NfseFilters = {};
+    if (filterStatus) filters.status = filterStatus;
+    const result = await listarNfsesComFiltros(filters);
     if (result.success && result.data) {
       setNfses(result.data);
     } else {
@@ -116,8 +123,16 @@ export function NfseContent() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
+    setLoading(true);
     loadNfses();
-  }, []);
+  }, [filterStatus]);
+
+  const filteredNfses = filterSearch
+    ? nfses.filter((n) =>
+        [n.clienteMeiRazaoSocial, n.tomadorNome, n.tomadorDocumento, n.descricaoServico, `${n.serie}-${n.numero}`]
+          .some((field) => field?.toLowerCase().includes(filterSearch.toLowerCase()))
+      )
+    : nfses;
 
   return (
     <motion.div
@@ -152,6 +167,34 @@ export function NfseContent() {
         </Link>
       </motion.div>
 
+      {/* Filtros */}
+      <motion.div variants={itemVariants} className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, CNPJ..."
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {["", "rascunho", "pendente", "processando", "autorizada", "rejeitada", "erro"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors cursor-pointer ${
+                filterStatus === s
+                  ? "bg-violet-600 text-white border-violet-600"
+                  : "bg-transparent text-muted-foreground border-border hover:border-violet-500/50"
+              }`}
+            >
+              {s === "" ? "Todos" : (statusConfig[s]?.label ?? s)}
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
       {/* Table */}
       <motion.div
         variants={itemVariants}
@@ -159,7 +202,7 @@ export function NfseContent() {
       >
         {loading ? (
           <TableSkeleton />
-        ) : nfses.length === 0 ? (
+        ) : filteredNfses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <FileText className="h-12 w-12 mb-3 text-muted-foreground/60" />
             <p className="text-sm">Nenhuma nota fiscal encontrada</p>
@@ -201,7 +244,7 @@ export function NfseContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {nfses.map((n, index) => (
+              {filteredNfses.map((n, index) => (
                 <motion.tr
                   key={n.id}
                   initial={{ opacity: 0, y: 8 }}
@@ -211,7 +254,8 @@ export function NfseContent() {
                     delay: index * 0.03,
                     ease: "easeOut" as const,
                   }}
-                  className="border-border hover:bg-accent/30 transition-colors duration-200"
+                  className="border-border hover:bg-accent/30 transition-colors duration-200 cursor-pointer"
+                  onClick={() => router.push(`/nfse/${n.id}`)}
                 >
                   <TableCell className="font-mono text-xs text-foreground">
                     {n.serie}-{n.numero}

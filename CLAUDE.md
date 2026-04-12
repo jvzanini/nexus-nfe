@@ -122,7 +122,15 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Verificação de limite no step de valores com avisos e bloqueio
   - Bloqueio acima de 120% impede emissão (risco de desenquadramento retroativo)
 
-### Próximo: Fase 7 — Cancelamento + substituição + histórico + export
+- ✅ **Fase 7** — Cancelamento + substituição + export (133 testes passando)
+  - Action cancelarNfse com validação de prazo 24h
+  - Action substituirNfse cria rascunho com substitutaDe preenchido
+  - Action exportarXmlsPeriodo retorna XMLs autorizados de um período
+  - UI: dialog de cancelamento com motivo obrigatório
+  - UI: botão substituir cria rascunho e navega para detalhe
+  - Botões visíveis apenas para NFS-e autorizada
+
+### Próximo: Fase 8 — Observabilidade + cutover produção
 Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 

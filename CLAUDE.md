@@ -136,7 +136,21 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Toggle de ambiente (produção restrita ↔ produção) via GlobalSettings, apenas super_admin
   - Confirmação explícita para mudar para produção
 
-### Status: TODAS AS FASES CONCLUÍDAS
+- ✅ **API REST v1** — Endpoints documentados para integração externa (139 testes passando)
+  - Auth por API Key (header X-API-Key) com CRUD de keys
+  - `GET/POST /api/v1/nfse` — listar com filtros/paginação + criar rascunho
+  - `GET /api/v1/nfse/{id}` — detalhes completos
+  - `POST /api/v1/nfse/{id}/emitir` — enfileirar para emissão
+  - `POST /api/v1/nfse/{id}/cancelar` — cancelar com motivo
+  - `GET /api/v1/nfse/{id}/xml` — download XML
+  - `GET /api/v1/clientes` — listar clientes MEI
+  - `GET /api/v1/clientes/{id}` — detalhes + certificado + faturamento
+  - `GET /api/v1/clientes/{id}/faturamento` — faturamento anual com faixas MEI
+  - `GET /api/v1/catalogo/nbs` — busca de códigos de tributação
+  - Fix do sefin-client para usar node:https nativo (mTLS real)
+  - Documentação completa em `docs/api/README.md`
+
+### Status: TODAS AS FASES CONCLUÍDAS + API REST
 O pipeline de emissão de NFS-e está 100% codificado (Fases -1 a 8).
 Para a primeira emissão real, faltam apenas os bloqueios externos:
 1. Certificado A1 ICP-Brasil (real ou de teste)

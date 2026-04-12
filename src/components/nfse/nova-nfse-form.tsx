@@ -218,6 +218,7 @@ export function NovaNfseForm() {
         {currentStep === 4 && (
           <StepValores
             data={formData.valores}
+            clienteMeiId={formData.cliente?.clienteMeiId}
             clienteMunicipioIbge={formData.cliente?.municipioIbge}
             codigoServico={formData.servico?.codigoTributacaoNacional}
             onNext={handleStepValores}

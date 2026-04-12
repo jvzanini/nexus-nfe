@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, Calculator, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calculator, Loader2, AlertTriangle, XOctagon } from "lucide-react";
 import { toast } from "sonner";
 import { stepValoresSchema } from "@/lib/validation/nfse";
 import { fetchParametrosServico } from "@/lib/actions/parametros-municipais";
+import { verificarLimiteAntesDeEmitir, type VerificacaoLimite } from "@/lib/actions/mei-limite";
+import { MeiFaturamentoBanner } from "@/components/nfse/mei-faturamento-banner";
 import type { NfseFormData } from "@/components/nfse/nova-nfse-form";
 
 interface StepValoresProps {
   data: NfseFormData["valores"];
+  clienteMeiId?: string;
   clienteMunicipioIbge?: string;
   codigoServico?: string;
   onNext: (data: NfseFormData["valores"]) => void;
@@ -36,6 +39,7 @@ function parseBRL(formatted: string): number {
 
 export function StepValores({
   data,
+  clienteMeiId,
   clienteMunicipioIbge,
   codigoServico,
   onNext,
@@ -48,6 +52,8 @@ export function StepValores({
     data?.aliquotaIss !== undefined ? String(data.aliquotaIss) : ""
   );
   const [loadingParams, setLoadingParams] = useState(false);
+  const [limiteCheck, setLimiteCheck] = useState<VerificacaoLimite | null>(null);
+  const limiteDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const valor = parseBRL(valorStr);
   const aliquota = parseFloat(aliquotaStr) || 0;
@@ -75,6 +81,25 @@ export function StepValores({
     }
     loadParams();
   }, [clienteMunicipioIbge, codigoServico, data?.aliquotaIss]);
+
+  // Verificação de limite MEI com debounce
+  useEffect(() => {
+    if (!clienteMeiId || valor <= 0) {
+      setLimiteCheck(null);
+      return;
+    }
+
+    if (limiteDebounceRef.current) clearTimeout(limiteDebounceRef.current);
+    limiteDebounceRef.current = setTimeout(() => {
+      verificarLimiteAntesDeEmitir(clienteMeiId, valor).then((r) => {
+        if (r.success && r.data) setLimiteCheck(r.data);
+      });
+    }, 600);
+
+    return () => {
+      if (limiteDebounceRef.current) clearTimeout(limiteDebounceRef.current);
+    };
+  }, [clienteMeiId, valor]);
 
   function handleValorChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -109,6 +134,9 @@ export function StepValores({
         </p>
       </div>
 
+      {/* Banner de faturamento anual MEI */}
+      {clienteMeiId && <MeiFaturamentoBanner clienteMeiId={clienteMeiId} />}
+
       {/* Valor do serviço */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
@@ -125,6 +153,27 @@ export function StepValores({
             className="pl-10 bg-muted/50 border-border text-foreground font-mono text-right"
           />
         </div>
+        {/* Avisos de limite MEI */}
+        {limiteCheck && limiteCheck.avisos.length > 0 && (
+          <div className={`rounded-lg border p-3 mt-2 ${
+            limiteCheck.podeEmitir
+              ? "bg-amber-500/10 border-amber-500/30"
+              : "bg-red-500/10 border-red-500/30"
+          }`}>
+            {limiteCheck.avisos.map((aviso, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                {limiteCheck.podeEmitir ? (
+                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                ) : (
+                  <XOctagon className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                )}
+                <span className={limiteCheck.podeEmitir ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}>
+                  {aviso}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Alíquota ISS */}

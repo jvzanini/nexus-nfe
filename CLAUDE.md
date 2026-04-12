@@ -5,13 +5,13 @@ Emissão automatizada de notas fiscais para MEIs via GOV.BR
 
 **URL Produção:** https://nfe.nexusai360.com
 **Repositório:** https://github.com/jvzanini/nexus-nfe
-**Blueprint:** github.com/jvzanini/nexus-ai-blueprint (v2.0.0)
+**Blueprint:** github.com/jvzanini/nexus-blueprint (v2.0.0)
 **Tipo:** Interno Nexus AI
 **Criado em:** 2026-04-10
 
 ## Metodologia
-Este projeto segue a metodologia do Blueprint Nexus AI:
-1. **Criação** — `/nexus-ai-blueprint:criar` (concluída)
+Este projeto segue a metodologia do Nexus Blueprint:
+1. **Criação** — `/nexus-blueprint:criar` (concluída)
 2. **Planejamento** — `superpowers:brainstorming` → `writing-plans`
 3. **Construção** — `superpowers:executing-plans` com commits frequentes
 4. **Absorção** — ao concluir, funcionalidades reutilizáveis voltam pro blueprint
@@ -65,7 +65,7 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
 - **queue:** BullMQ worker pra processamento assíncrono de emissão NFE
 - **outbox:** Eventos transacionais confiáveis
 
-## Estado atual (2026-04-10)
+## Estado atual (2026-04-12)
 
 ### Concluído
 - ✅ Fase 1 — Esqueleto (login, users, profile, dashboard, settings, sidebar com command palette funcional)
@@ -77,9 +77,15 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Empacotamento GZip+Base64
   - Orquestrador `prepareSubmission`
   - Endpoints SEFIN e ADN confirmados vivos (mTLS obrigatório)
+- ✅ **Fase 1A** — Cadastro MEI + Upload de certificado (BrasilAPI, criptografia AES-256-GCM, cron expiração)
+- ✅ **Fase 1B** — Catálogo NBS + Parâmetros Municipais + Numeração DPS (82 testes passando)
+  - Seed de ~580 códigos de tributação nacional (LC 116/2003) via parser XLSX
+  - Busca por código/descrição com autocomplete (componente NbsSelector)
+  - Wrapper de parâmetros municipais (mock, mTLS real na Fase 3)
+  - Numeração atômica de DPS (SELECT FOR UPDATE)
 
-### Em andamento: Fase 1A — Cadastro MEI + Upload de certificado
-Próxima coisa a fazer quando retomar. Plano detalhado em:
+### Próximo: Fase 2 — DPS Builder completo
+Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 
 ### Bloqueios externos pra Fase 3 (submit real)
@@ -108,7 +114,9 @@ Tudo em `src/lib/nfse/`:
 - `xml-signer.ts` — XMLDSIG (xml-crypto)
 - `pack.ts` — GZip + Base64
 - `prepare-submission.ts` — orquestrador build+sign+pack
-- `__tests__/` — 6 arquivos, 37 testes, incluindo validação via xmllint e xmlsec1
+- `nbs-parser.ts` — parser da planilha NBS (LC 116/2003)
+- `parametros-municipais.ts` — wrapper de parâmetros municipais (mock Fase 1B, real Fase 3)
+- `__tests__/` — 11 arquivos, 82 testes
 
 Rodar os testes: `npm test`
 Rodar sanity check end-to-end: `npx tsx scripts/nfse-sanity-check.ts`
@@ -126,3 +134,8 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `notifications.ts` — Marcar como lida, feed
 - `audit-log.ts` — Consulta e listagem (escrita é fire-and-forget)
 - `settings.ts` — Leitura/escrita de configurações globais
+- `clientes-mei.ts` — CRUD de clientes MEI + consulta BrasilAPI
+- `certificados.ts` — Upload, validação e gestão de certificados A1
+- `nbs.ts` — Busca de códigos de tributação nacional
+- `parametros-municipais.ts` — Convênio e parâmetros de serviço por município
+- `dps-numeracao.ts` — Reserva de número sequencial de DPS

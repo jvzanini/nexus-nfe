@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { randomBytes } from "node:crypto";
 import type { ApiKeyInfo } from "./auth";
 
+const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
+
 /**
  * Gera uma nova API Key e salva no banco.
  */
@@ -25,7 +27,7 @@ export async function createApiKey(name: string): Promise<ApiKeyInfo> {
 
   await prisma.globalSettings.upsert({
     where: { key: "API_KEYS" },
-    create: { key: "API_KEYS", value: JSON.stringify(existing) },
+    create: { key: "API_KEYS", value: JSON.stringify(existing), updatedBy: SYSTEM_USER_ID },
     update: { value: JSON.stringify(existing) },
   });
 

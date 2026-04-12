@@ -40,8 +40,6 @@ export async function setAmbienteNfse(
   confirmar: boolean = false
 ): Promise<ActionResult> {
   try {
-    await requireRole("super_admin");
-
     if (ambiente === "producao" && !confirmar) {
       return {
         success: false,
@@ -49,9 +47,11 @@ export async function setAmbienteNfse(
       };
     }
 
+    const user = await requireRole("super_admin");
+
     await prisma.globalSettings.upsert({
       where: { key: "AMBIENTE_NFSE" },
-      create: { key: "AMBIENTE_NFSE", value: ambiente },
+      create: { key: "AMBIENTE_NFSE", value: ambiente, updatedBy: user.id },
       update: { value: ambiente },
     });
 

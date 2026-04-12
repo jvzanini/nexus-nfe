@@ -402,3 +402,179 @@ export async function emitirNfse(
     return { success: false, error: "Erro ao enfileirar emissão" };
   }
 }
+
+/**
+ * Cancela uma NFS-e autorizada. Admin+.
+ * Só permite cancelar dentro de 24h da autorização.
+ * Na Fase 3 (com mTLS), fará POST /nfse/{chave}/eventos com tipo cancelamento.
+ * Por agora, marca como cancelada no banco.
+ */
+export async function cancelarNfse(
+  nfseId: string,
+  motivo: string
+): Promise<ActionResult> {
+  try {
+    await requireRole("admin");
+
+    if (!motivo || motivo.trim().length < 5) {
+      return { success: false, error: "Motivo do cancelamento é obrigatório (mínimo 5 caracteres)" };
+    }
+
+    const nfse = await prisma.nfse.findUnique({
+      where: { id: nfseId },
+      select: { id: true, status: true, dataAutorizacao: true, chaveAcesso: true },
+    });
+
+    if (!nfse) return { success: false, error: "NFS-e não encontrada" };
+    if (nfse.status !== "autorizada") {
+      return { success: false, error: "Apenas NFS-e autorizadas podem ser canceladas" };
+    }
+
+    // Verificar prazo de 24h
+    if (nfse.dataAutorizacao) {
+      const horasDesdeAutorizacao = (Date.now() - nfse.dataAutorizacao.getTime()) / (1000 * 60 * 60);
+      if (horasDesdeAutorizacao > 24) {
+        return {
+          success: false,
+          error: `Prazo de cancelamento expirado (${horasDesdeAutorizacao.toFixed(0)}h desde autorização). Utilize a substituição.`,
+        };
+      }
+    }
+
+    // TODO Fase 3: POST /nfse/{chave}/eventos com tipo cancelamento via SefinClient
+
+    await prisma.nfse.update({
+      where: { id: nfseId },
+      data: {
+        status: "cancelada",
+        mensagemResposta: `Cancelada: ${motivo.trim()}`,
+      },
+    });
+
+    revalidatePath("/nfse");
+    revalidatePath(`/nfse/${nfseId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[nfse.cancelarNfse]", error);
+    return { success: false, error: "Erro ao cancelar NFS-e" };
+  }
+}
+
+/**
+ * Cria um rascunho de substituição para uma NFS-e existente. Admin+.
+ * O rascunho terá o campo substitutaDe preenchido com o id da original.
+ * Ao emitir, o XML incluirá o campo subst.chSubstda.
+ */
+export async function substituirNfse(
+  nfseIdOriginal: string
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const currentUser = await requireRole("admin");
+
+    const original = await prisma.nfse.findUnique({
+      where: { id: nfseIdOriginal },
+      include: {
+        clienteMei: { select: { id: true, isActive: true } },
+      },
+    });
+
+    if (!original) return { success: false, error: "NFS-e original não encontrada" };
+    if (original.status !== "autorizada") {
+      return { success: false, error: "Apenas NFS-e autorizadas podem ser substituídas" };
+    }
+    if (!original.chaveAcesso) {
+      return { success: false, error: "NFS-e sem chave de acesso — não pode ser substituída" };
+    }
+
+    // Reservar número para a substituta
+    const numResult = await reservarProximoNumeroDps(original.clienteMeiId);
+    if (!numResult.success || !numResult.data) {
+      return { success: false, error: numResult.error ?? "Erro ao reservar número DPS" };
+    }
+
+    const { serie, numero, idDps } = numResult.data;
+
+    // Criar rascunho substituto com mesmos dados da original
+    const substituta = await prisma.nfse.create({
+      data: {
+        clienteMeiId: original.clienteMeiId,
+        ambiente: original.ambiente,
+        status: "rascunho",
+        idDps,
+        serie,
+        numero: String(numero),
+        dataEmissao: new Date(),
+        dataCompetencia: new Date(),
+        descricaoServico: original.descricaoServico,
+        codigoServico: original.codigoServico,
+        codigoNbs: original.codigoNbs,
+        localPrestacaoIbge: original.localPrestacaoIbge,
+        valorServico: original.valorServico,
+        aliquotaIss: original.aliquotaIss,
+        valorIss: original.valorIss,
+        tomadorTipo: original.tomadorTipo,
+        tomadorDocumento: original.tomadorDocumento,
+        tomadorNome: original.tomadorNome,
+        tomadorEmail: original.tomadorEmail,
+        tomadorEndereco: original.tomadorEndereco ?? undefined,
+        substitutaDe: original.id,
+        motivoSubstituicao: "Substituição de NFS-e",
+        createdById: currentUser.id,
+      },
+      select: { id: true },
+    });
+
+    revalidatePath("/nfse");
+    return { success: true, data: { id: substituta.id } };
+  } catch (error) {
+    console.error("[nfse.substituirNfse]", error);
+    return { success: false, error: "Erro ao criar substituição" };
+  }
+}
+
+/**
+ * Retorna XMLs de NFS-e autorizadas de um período para export. Admin+.
+ */
+export async function exportarXmlsPeriodo(
+  clienteMeiId: string,
+  dataInicio: string,
+  dataFim: string
+): Promise<ActionResult<Array<{ filename: string; xml: string }>>> {
+  try {
+    await requireRole("admin");
+
+    const nfses = await prisma.nfse.findMany({
+      where: {
+        clienteMeiId,
+        status: "autorizada",
+        dataEmissao: {
+          gte: new Date(dataInicio),
+          lte: new Date(dataFim + "T23:59:59Z"),
+        },
+      },
+      select: {
+        serie: true,
+        numero: true,
+        xmlAutorizado: true,
+        xmlAssinado: true,
+      },
+      orderBy: { dataEmissao: "asc" },
+    });
+
+    const xmls = nfses
+      .filter((n) => n.xmlAutorizado || n.xmlAssinado)
+      .map((n) => ({
+        filename: `nfse-${n.serie}-${n.numero}.xml`,
+        xml: (n.xmlAutorizado ?? n.xmlAssinado)!,
+      }));
+
+    if (xmls.length === 0) {
+      return { success: false, error: "Nenhuma NFS-e com XML disponível no período" };
+    }
+
+    return { success: true, data: xmls };
+  } catch (error) {
+    console.error("[nfse.exportarXmlsPeriodo]", error);
+    return { success: false, error: "Erro ao exportar XMLs" };
+  }
+}

@@ -97,8 +97,16 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Handler BullMQ de emissão (load cert → decrypt → build DPS → sign → pack → POST → update DB)
   - Action emitirNfse com validação de certificado + enfileiramento
   - Botão "Emitir NFS-e" funcional no form (aguarda cert A1 real para teste em homologação)
+- ✅ **Fase 4** — Consulta + Download + Reconciliação (133 testes passando)
+  - Página de detalhes /nfse/[id] com cards (cliente, serviço, tomador, valores, status/timeline)
+  - Download de XML assinado/autorizado
+  - Copiar chave de acesso para clipboard
+  - Filtros na listagem: por status (botões) + busca textual (cliente, tomador, número)
+  - Rows clicáveis navegando para detalhe
+  - Actions expandidas: getNfseDetail, downloadXmlNfse, listarNfsesComFiltros
+  - Job de reconciliação cron (a cada 5min verifica NFS-e em processando via HEAD /dps/{id})
 
-### Próximo: Fase 4 — Consulta + DANFS-e + download
+### Próximo: Fase 5 — UX inteligente + memória + 1-clique
 Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 

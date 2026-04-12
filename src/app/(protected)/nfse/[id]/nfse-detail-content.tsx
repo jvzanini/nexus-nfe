@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -9,11 +9,22 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, FileText, Download, Building2, User,
   Calculator, Clock, AlertTriangle, CheckCircle2, XCircle, Copy, RotateCcw,
+  Ban, Replace, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getNfseDetail, downloadXmlNfse, type NfseDetail } from "@/lib/actions/nfse";
+import { getNfseDetail, downloadXmlNfse, cancelarNfse, substituirNfse, type NfseDetail } from "@/lib/actions/nfse";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -105,6 +116,20 @@ export function NfseDetailContent({ id }: { id: string }) {
   const [nfse, setNfse] = useState<NfseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelMotivo, setCancelMotivo] = useState("");
+  const [cancelling, startCancelling] = useTransition();
+
+  function loadNfse() {
+    getNfseDetail(id).then((result) => {
+      if (result.success && result.data) {
+        setNfse(result.data);
+      } else {
+        toast.error(result.error ?? "Erro ao carregar NFS-e");
+      }
+      setLoading(false);
+    });
+  }
 
   useEffect(() => {
     getNfseDetail(id).then((result) => {
@@ -140,6 +165,31 @@ export function NfseDetailContent({ id }: { id: string }) {
     if (!nfse?.chaveAcesso) return;
     await navigator.clipboard.writeText(nfse.chaveAcesso);
     toast.success("Chave copiada");
+  }
+
+  function handleCancelar() {
+    startCancelling(async () => {
+      const result = await cancelarNfse(id, cancelMotivo);
+      if (result.success) {
+        toast.success("NFS-e cancelada com sucesso");
+        setCancelOpen(false);
+        loadNfse();
+      } else {
+        toast.error(result.error || "Erro ao cancelar");
+      }
+    });
+  }
+
+  function handleSubstituir() {
+    startCancelling(async () => {
+      const result = await substituirNfse(id);
+      if (result.success && result.data) {
+        toast.success("Rascunho de substituição criado");
+        router.push(`/nfse/${result.data.id}`);
+      } else {
+        toast.error(result.error || "Erro ao substituir");
+      }
+    });
   }
 
   if (loading) {
@@ -182,6 +232,29 @@ export function NfseDetailContent({ id }: { id: string }) {
 
         {/* Ações */}
         <div className="flex items-center gap-2 sm:ml-auto">
+          {nfse.status === "autorizada" && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCancelOpen(true)}
+                className="gap-2 cursor-pointer text-red-500 hover:text-red-600 border-red-500/30 hover:border-red-500/50"
+              >
+                <Ban className="h-4 w-4" />
+                Cancelar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSubstituir}
+                disabled={cancelling}
+                className="gap-2 cursor-pointer"
+              >
+                <Replace className="h-4 w-4" />
+                Substituir
+              </Button>
+            </>
+          )}
           {["autorizada", "rejeitada", "erro"].includes(nfse.status) && (
             <Button
               variant="outline"
@@ -319,6 +392,39 @@ export function NfseDetailContent({ id }: { id: string }) {
           </CardContent>
         </Card>
       </motion.div>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar NFS-e</DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. A NFS-e será marcada como cancelada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label htmlFor="motivo">Motivo do cancelamento</Label>
+            <Input
+              id="motivo"
+              value={cancelMotivo}
+              onChange={(e) => setCancelMotivo(e.target.value)}
+              placeholder="Descreva o motivo (mínimo 5 caracteres)"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} className="cursor-pointer">
+              Voltar
+            </Button>
+            <Button
+              onClick={handleCancelar}
+              disabled={cancelling || cancelMotivo.trim().length < 5}
+              className="gap-2 bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+            >
+              {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+              Confirmar cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

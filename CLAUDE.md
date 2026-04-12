@@ -130,9 +130,17 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - UI: botão substituir cria rascunho e navega para detalhe
   - Botões visíveis apenas para NFS-e autorizada
 
-### Próximo: Fase 8 — Observabilidade + cutover produção
-Plano detalhado em:
-`docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
+- ✅ **Fase 8** — Observabilidade + toggle de ambiente (139 testes passando)
+  - Logger estruturado (JSON) com sanitização de dados sensíveis (CNPJ mascarado, PFX/senha removidos)
+  - Wrapper `withTiming` para medir duração de operações
+  - Toggle de ambiente (produção restrita ↔ produção) via GlobalSettings, apenas super_admin
+  - Confirmação explícita para mudar para produção
+
+### Status: TODAS AS FASES CONCLUÍDAS
+O pipeline de emissão de NFS-e está 100% codificado (Fases -1 a 8).
+Para a primeira emissão real, faltam apenas os bloqueios externos:
+1. Certificado A1 ICP-Brasil (real ou de teste)
+2. Adesão gov.br nível Ouro ao Sistema Nacional NFS-e
 
 ### Bloqueios externos pra Fase 3 (submit real)
 1. Adesão gov.br nível Ouro de CNPJ de teste ao Sistema Nacional NFS-e
@@ -166,7 +174,8 @@ Tudo em `src/lib/nfse/`:
 - `mtls-client.ts` — cria https.Agent para mTLS com cert A1
 - `sefin-client.ts` — HTTP client tipado (submitNfse, getNfse, headDps)
 - `response-parser.ts` — parser de resposta da API SEFIN
-- `__tests__/` — 16 arquivos, 133 testes
+- `logger.ts` — logger estruturado com sanitização de dados sensíveis
+- `__tests__/` — 17 arquivos, 139 testes
 
 Rodar os testes: `npm test`
 Rodar sanity check end-to-end: `npx tsx scripts/nfse-sanity-check.ts`
@@ -193,3 +202,4 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `servicos-memorizados.ts` — CRUD de serviços memorizados por cliente
 - `tomadores-favoritos.ts` — CRUD de tomadores favoritos por cliente
 - `mei-limite.ts` — Verificação e controle do limite anual MEI (R$81k)
+- `ambiente-nfse.ts` — Toggle de ambiente (homologação ↔ produção)

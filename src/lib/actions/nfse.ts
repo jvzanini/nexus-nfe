@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { criarNfseSchema, type CriarNfseInput } from "@/lib/validation/nfse";
 import { reservarProximoNumeroDps } from "@/lib/actions/dps-numeracao";
+import { nfeQueue } from "@/lib/queue";
 
 type ActionResult<T = unknown> = {
   success: boolean;
@@ -168,5 +169,63 @@ export async function getNfse(id: string): Promise<ActionResult<NfseListItem>> {
   } catch (error) {
     console.error("[nfse.getNfse]", error);
     return { success: false, error: "Erro ao carregar NFS-e" };
+  }
+}
+
+/**
+ * Enfileira uma NFS-e rascunho para emissão. Admin+.
+ * Valida certificado, muda status para pendente, e enfileira job.
+ */
+export async function emitirNfse(
+  nfseId: string
+): Promise<ActionResult<{ jobId: string }>> {
+  try {
+    await requireRole("admin");
+
+    const nfse = await prisma.nfse.findUnique({
+      where: { id: nfseId },
+      select: {
+        id: true,
+        status: true,
+        clienteMeiId: true,
+        clienteMei: {
+          select: {
+            isActive: true,
+            certificados: {
+              where: { revoked: false, notAfter: { gt: new Date() } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (!nfse) return { success: false, error: "NFS-e não encontrada" };
+    if (nfse.status !== "rascunho") {
+      return { success: false, error: "Apenas rascunhos podem ser emitidos" };
+    }
+    if (!nfse.clienteMei.isActive) {
+      return { success: false, error: "Cliente MEI inativo" };
+    }
+    if (nfse.clienteMei.certificados.length === 0) {
+      return { success: false, error: "Cliente não possui certificado digital válido" };
+    }
+
+    await prisma.nfse.update({
+      where: { id: nfseId },
+      data: { status: "pendente" },
+    });
+
+    const job = await nfeQueue.add("emit-nfse", {
+      nfseId,
+      clienteMeiId: nfse.clienteMeiId,
+    });
+
+    revalidatePath("/nfse");
+    return { success: true, data: { jobId: job.id ?? "" } };
+  } catch (error) {
+    console.error("[nfse.emitirNfse]", error);
+    return { success: false, error: "Erro ao enfileirar emissão" };
   }
 }

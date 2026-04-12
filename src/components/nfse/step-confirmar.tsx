@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { criarRascunhoNfse, emitirNfse } from "@/lib/actions/nfse";
+import { salvarServicoMemorizado } from "@/lib/actions/servicos-memorizados";
+import { salvarTomadorFavorito } from "@/lib/actions/tomadores-favoritos";
 import type { NfseFormData } from "@/components/nfse/nova-nfse-form";
 
 interface StepConfirmarProps {
@@ -121,6 +123,31 @@ export function StepConfirmar({ formData, onBack }: StepConfirmarProps) {
 
       if (result.success) {
         toast.success("Rascunho de NFS-e criado com sucesso");
+
+        // Auto-save serviço memorizado (fire-and-forget)
+        if (cliente && servico && valores) {
+          salvarServicoMemorizado({
+            clienteMeiId: cliente.clienteMeiId,
+            apelido: servico.descricaoServico.slice(0, 50),
+            descricaoServico: servico.descricaoServico,
+            valorPadrao: valores.valorServico,
+            codigoServico: servico.codigoTributacaoNacional,
+            codigoNbs: servico.codigoNbs || undefined,
+            localPrestacaoIbge: servico.localPrestacaoIbge,
+          }).catch(() => {}); // fire-and-forget
+        }
+
+        // Auto-save tomador favorito (fire-and-forget)
+        if (cliente && tomador) {
+          salvarTomadorFavorito({
+            clienteMeiId: cliente.clienteMeiId,
+            tipo: tomador.tomadorTipo,
+            documento: tomador.tomadorDocumento,
+            nome: tomador.tomadorNome,
+            email: tomador.tomadorEmail || undefined,
+          }).catch(() => {}); // fire-and-forget
+        }
+
         router.push("/nfse");
       } else {
         toast.error(result.error || "Erro ao criar rascunho");
@@ -166,6 +193,31 @@ export function StepConfirmar({ formData, onBack }: StepConfirmarProps) {
       const result = await emitirNfse(rascunho.data.id);
       if (result.success) {
         toast.success("NFS-e enviada para emissão");
+
+        // Auto-save serviço memorizado (fire-and-forget)
+        if (cliente && servico && valores) {
+          salvarServicoMemorizado({
+            clienteMeiId: cliente.clienteMeiId,
+            apelido: servico.descricaoServico.slice(0, 50),
+            descricaoServico: servico.descricaoServico,
+            valorPadrao: valores.valorServico,
+            codigoServico: servico.codigoTributacaoNacional,
+            codigoNbs: servico.codigoNbs || undefined,
+            localPrestacaoIbge: servico.localPrestacaoIbge,
+          }).catch(() => {}); // fire-and-forget
+        }
+
+        // Auto-save tomador favorito (fire-and-forget)
+        if (cliente && tomador) {
+          salvarTomadorFavorito({
+            clienteMeiId: cliente.clienteMeiId,
+            tipo: tomador.tomadorTipo,
+            documento: tomador.tomadorDocumento,
+            nome: tomador.tomadorNome,
+            email: tomador.tomadorEmail || undefined,
+          }).catch(() => {}); // fire-and-forget
+        }
+
         router.push("/nfse");
       } else {
         toast.error(result.error || "Erro ao emitir NFS-e");

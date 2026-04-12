@@ -106,7 +106,16 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Actions expandidas: getNfseDetail, downloadXmlNfse, listarNfsesComFiltros
   - Job de reconciliação cron (a cada 5min verifica NFS-e em processando via HEAD /dps/{id})
 
-### Próximo: Fase 5 — UX inteligente + memória + 1-clique
+- ✅ **Fase 5** — UX inteligente + memória + 1-clique (133 testes passando)
+  - Actions CRUD de serviços memorizados e tomadores favoritos (upsert, uso count, último uso)
+  - Sugestões de serviços recentes no step de serviço (auto-fill ao clicar)
+  - Sugestões de tomadores recentes no step de tomador (auto-fill ao clicar)
+  - Auto-save de serviço memorizado e tomador favorito após emissão (fire-and-forget)
+  - Botão "Emitir novamente" no detalhe da NFS-e (re-emissão com pre-fill)
+  - Atalho Ctrl+N / Cmd+N para nova NFS-e
+  - Pre-fill automático do form via query param ?reemitir={id}
+
+### Próximo: Fase 6 — Regras de negócio MEI (limite anual R$81k)
 Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 
@@ -165,4 +174,6 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `nbs.ts` — Busca de códigos de tributação nacional
 - `parametros-municipais.ts` — Convênio e parâmetros de serviço por município
 - `dps-numeracao.ts` — Reserva de número sequencial de DPS
-- `nfse.ts` — Criar rascunho, listar e detalhar NFS-e
+- `nfse.ts` — Criar rascunho, listar, detalhar, emitir, download XML NFS-e
+- `servicos-memorizados.ts` — CRUD de serviços memorizados por cliente
+- `tomadores-favoritos.ts` — CRUD de tomadores favoritos por cliente

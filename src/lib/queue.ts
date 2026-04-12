@@ -3,9 +3,8 @@ import { Queue } from "bullmq";
 import { redis } from "@/lib/redis";
 
 export type NfeJobData = {
+  nfseId: string;
   clienteMeiId: string;
-  tipo: string;
-  payload: unknown;
 };
 
 export type OutboxJobData = {

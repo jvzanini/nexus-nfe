@@ -14,11 +14,11 @@ import IORedis from "ioredis";
 
 import { prisma } from "../lib/prisma";
 import { checkCertificateExpiration } from "../lib/certificates/check-expiration";
+import { handleEmitNfse } from "./handlers/emit-nfse";
 
 type NfeJobData = {
+  nfseId: string;
   clienteMeiId: string;
-  tipo: string;
-  payload: unknown;
 };
 
 type OutboxJobData = {
@@ -47,11 +47,8 @@ const connection = new IORedis(REDIS_URL, {
 const nfeWorker = new Worker<NfeJobData>(
   "nfe",
   async (job: Job<NfeJobData>) => {
-    console.log(
-      `[NFE] processing job ${job.id} cliente=${job.data.clienteMeiId} tipo=${job.data.tipo}`
-    );
-    // Fase 2: integrar emissao NFe aqui.
-    return { ok: true };
+    console.log(`[NFE] processing job ${job.id} nfseId=${job.data.nfseId}`);
+    return handleEmitNfse(job);
   },
   { connection, concurrency: 5 }
 );

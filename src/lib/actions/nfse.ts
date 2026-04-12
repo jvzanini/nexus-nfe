@@ -29,6 +29,36 @@ export interface NfseListItem {
   clienteMeiRazaoSocial: string;
 }
 
+export interface NfseDetail extends NfseListItem {
+  ambiente: string;
+  idDps: string;
+  codigoNbs: string | null;
+  localPrestacaoIbge: string;
+  aliquotaIss: string;
+  valorIss: string;
+  tomadorTipo: string;
+  tomadorEmail: string | null;
+  tomadorEndereco: Record<string, string> | null;
+  xmlAssinado: string | null;
+  xmlAutorizado: string | null;
+  chaveAcesso: string | null;
+  numeroNfse: string | null;
+  dataAutorizacao: Date | null;
+  codigoResposta: string | null;
+  mensagemResposta: string | null;
+  tentativas: number;
+  ultimoErro: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface NfseFilters {
+  clienteMeiId?: string;
+  status?: string;
+  dataInicio?: string;
+  dataFim?: string;
+}
+
 export async function criarRascunhoNfse(
   input: CriarNfseInput
 ): Promise<ActionResult<{ id: string }>> {
@@ -169,6 +199,143 @@ export async function getNfse(id: string): Promise<ActionResult<NfseListItem>> {
   } catch (error) {
     console.error("[nfse.getNfse]", error);
     return { success: false, error: "Erro ao carregar NFS-e" };
+  }
+}
+
+export async function getNfseDetail(id: string): Promise<ActionResult<NfseDetail>> {
+  try {
+    await requireRole("admin");
+
+    const n = await prisma.nfse.findUnique({
+      where: { id },
+      include: {
+        clienteMei: { select: { razaoSocial: true } },
+      },
+    });
+
+    if (!n) return { success: false, error: "NFS-e não encontrada" };
+
+    return {
+      success: true,
+      data: {
+        id: n.id,
+        idDps: n.idDps,
+        serie: n.serie,
+        numero: n.numero,
+        status: n.status,
+        ambiente: n.ambiente,
+        descricaoServico: n.descricaoServico,
+        codigoServico: n.codigoServico,
+        codigoNbs: n.codigoNbs,
+        localPrestacaoIbge: n.localPrestacaoIbge,
+        tomadorNome: n.tomadorNome,
+        tomadorDocumento: n.tomadorDocumento,
+        tomadorTipo: n.tomadorTipo,
+        tomadorEmail: n.tomadorEmail,
+        tomadorEndereco: n.tomadorEndereco as Record<string, string> | null,
+        valorServico: n.valorServico.toString(),
+        aliquotaIss: n.aliquotaIss.toString(),
+        valorIss: n.valorIss.toString(),
+        dataEmissao: n.dataEmissao,
+        dataCompetencia: n.dataCompetencia,
+        xmlAssinado: n.xmlAssinado,
+        xmlAutorizado: n.xmlAutorizado,
+        chaveAcesso: n.chaveAcesso,
+        numeroNfse: n.numeroNfse,
+        dataAutorizacao: n.dataAutorizacao,
+        codigoResposta: n.codigoResposta,
+        mensagemResposta: n.mensagemResposta,
+        tentativas: n.tentativas,
+        ultimoErro: n.ultimoErro,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+        clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
+      },
+    };
+  } catch (error) {
+    console.error("[nfse.getNfseDetail]", error);
+    return { success: false, error: "Erro ao carregar detalhes da NFS-e" };
+  }
+}
+
+/**
+ * Retorna o XML assinado ou autorizado de uma NFS-e. Admin+.
+ */
+export async function downloadXmlNfse(
+  id: string
+): Promise<ActionResult<{ xml: string; filename: string }>> {
+  try {
+    await requireRole("admin");
+
+    const n = await prisma.nfse.findUnique({
+      where: { id },
+      select: {
+        xmlAutorizado: true,
+        xmlAssinado: true,
+        serie: true,
+        numero: true,
+        status: true,
+      },
+    });
+
+    if (!n) return { success: false, error: "NFS-e não encontrada" };
+
+    const xml = n.xmlAutorizado ?? n.xmlAssinado;
+    if (!xml) {
+      return { success: false, error: "XML não disponível para esta NFS-e" };
+    }
+
+    const filename = `nfse-${n.serie}-${n.numero}.xml`;
+    return { success: true, data: { xml, filename } };
+  } catch (error) {
+    console.error("[nfse.downloadXmlNfse]", error);
+    return { success: false, error: "Erro ao baixar XML" };
+  }
+}
+
+export async function listarNfsesComFiltros(
+  filters: NfseFilters = {}
+): Promise<ActionResult<NfseListItem[]>> {
+  try {
+    await requireRole("admin");
+
+    const where: Record<string, unknown> = {};
+    if (filters.clienteMeiId) where.clienteMeiId = filters.clienteMeiId;
+    if (filters.status) where.status = filters.status;
+    if (filters.dataInicio || filters.dataFim) {
+      where.dataEmissao = {
+        ...(filters.dataInicio ? { gte: new Date(filters.dataInicio) } : {}),
+        ...(filters.dataFim ? { lte: new Date(filters.dataFim + "T23:59:59Z") } : {}),
+      };
+    }
+
+    const nfses = await prisma.nfse.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      select: {
+        id: true, idDps: true, serie: true, numero: true, status: true,
+        descricaoServico: true, codigoServico: true, tomadorNome: true,
+        tomadorDocumento: true, valorServico: true, dataEmissao: true,
+        dataCompetencia: true,
+        clienteMei: { select: { razaoSocial: true } },
+      },
+    });
+
+    const data: NfseListItem[] = nfses.map((n) => ({
+      id: n.id, idDps: n.idDps, serie: n.serie, numero: n.numero,
+      status: n.status, descricaoServico: n.descricaoServico,
+      codigoServico: n.codigoServico, tomadorNome: n.tomadorNome,
+      tomadorDocumento: n.tomadorDocumento,
+      valorServico: n.valorServico.toString(),
+      dataEmissao: n.dataEmissao, dataCompetencia: n.dataCompetencia,
+      clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
+    }));
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("[nfse.listarNfsesComFiltros]", error);
+    return { success: false, error: "Erro ao listar NFS-e" };
   }
 }
 

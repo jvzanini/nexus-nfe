@@ -23,7 +23,7 @@ export interface NavItem {
 export const MAIN_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes MEI", href: "/clientes", icon: Building2 },
-  { label: "Notas Fiscais", href: "/nfe", icon: FileText },
+  { label: "Notas Fiscais", href: "/nfse", icon: FileText },
 ];
 
 export const RESTRICTED_NAV_ITEMS: NavItem[] = [

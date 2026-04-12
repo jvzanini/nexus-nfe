@@ -78,13 +78,20 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Orquestrador `prepareSubmission`
   - Endpoints SEFIN e ADN confirmados vivos (mTLS obrigatório)
 - ✅ **Fase 1A** — Cadastro MEI + Upload de certificado (BrasilAPI, criptografia AES-256-GCM, cron expiração)
-- ✅ **Fase 1B** — Catálogo NBS + Parâmetros Municipais + Numeração DPS (82 testes passando)
+- ✅ **Fase 1B** — Catálogo NBS + Parâmetros Municipais + Numeração DPS
   - Seed de ~580 códigos de tributação nacional (LC 116/2003) via parser XLSX
   - Busca por código/descrição com autocomplete (componente NbsSelector)
   - Wrapper de parâmetros municipais (mock, mTLS real na Fase 3)
   - Numeração atômica de DPS (SELECT FOR UPDATE)
+- ✅ **Fase 2** — DPS Builder completo + Form de emissão (117 testes passando)
+  - Validador DPS com regras de negócio em português (27 testes)
+  - Testes XSD expandidos — tomador PJ, endereço, intermediário, substituição (8 testes)
+  - Schemas Zod para form de emissão (step-by-step)
+  - Server actions: criarRascunhoNfse, listarNfses, getNfse
+  - Form multi-step de emissão com 5 etapas (/nfse/nova)
+  - Página de listagem /nfse com badges de status
 
-### Próximo: Fase 2 — DPS Builder completo
+### Próximo: Fase 3 — Transport mTLS + primeira emissão em homologação
 Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 
@@ -116,7 +123,8 @@ Tudo em `src/lib/nfse/`:
 - `prepare-submission.ts` — orquestrador build+sign+pack
 - `nbs-parser.ts` — parser da planilha NBS (LC 116/2003)
 - `parametros-municipais.ts` — wrapper de parâmetros municipais (mock Fase 1B, real Fase 3)
-- `__tests__/` — 11 arquivos, 82 testes
+- `dps-validator.ts` — validador semântico pré-XML com erros em português
+- `__tests__/` — 13 arquivos, 117 testes
 
 Rodar os testes: `npm test`
 Rodar sanity check end-to-end: `npx tsx scripts/nfse-sanity-check.ts`
@@ -139,3 +147,4 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `nbs.ts` — Busca de códigos de tributação nacional
 - `parametros-municipais.ts` — Convênio e parâmetros de serviço por município
 - `dps-numeracao.ts` — Reserva de número sequencial de DPS
+- `nfse.ts` — Criar rascunho, listar e detalhar NFS-e

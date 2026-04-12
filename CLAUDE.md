@@ -115,7 +115,14 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Atalho Ctrl+N / Cmd+N para nova NFS-e
   - Pre-fill automático do form via query param ?reemitir={id}
 
-### Próximo: Fase 6 — Regras de negócio MEI (limite anual R$81k)
+- ✅ **Fase 6** — Regras de negócio MEI (133 testes passando)
+  - Actions: getFaturamentoAno, atualizarFaturamentoPos, verificarLimiteAntesDeEmitir
+  - Faixas graduais: ok (≤80%), atenção (80-100%), alerta (100-120%), bloqueado (>120%)
+  - Banner visual de faturamento anual com barra de progresso colorida
+  - Verificação de limite no step de valores com avisos e bloqueio
+  - Bloqueio acima de 120% impede emissão (risco de desenquadramento retroativo)
+
+### Próximo: Fase 7 — Cancelamento + substituição + histórico + export
 Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 
@@ -177,3 +184,4 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `nfse.ts` — Criar rascunho, listar, detalhar, emitir, download XML NFS-e
 - `servicos-memorizados.ts` — CRUD de serviços memorizados por cliente
 - `tomadores-favoritos.ts` — CRUD de tomadores favoritos por cliente
+- `mei-limite.ts` — Verificação e controle do limite anual MEI (R$81k)

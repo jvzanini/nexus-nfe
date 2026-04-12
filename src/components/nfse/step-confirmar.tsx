@@ -14,7 +14,7 @@ import {
   Lock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { criarRascunhoNfse } from "@/lib/actions/nfse";
+import { criarRascunhoNfse, emitirNfse } from "@/lib/actions/nfse";
 import type { NfseFormData } from "@/components/nfse/nova-nfse-form";
 
 interface StepConfirmarProps {
@@ -84,6 +84,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 export function StepConfirmar({ formData, onBack }: StepConfirmarProps) {
   const router = useRouter();
   const [saving, startSaving] = useTransition();
+  const [emitting, startEmitting] = useTransition();
 
   const { cliente, servico, tomador, valores } = formData;
   const valorServico = valores?.valorServico ?? 0;
@@ -123,6 +124,51 @@ export function StepConfirmar({ formData, onBack }: StepConfirmarProps) {
         router.push("/nfse");
       } else {
         toast.error(result.error || "Erro ao criar rascunho");
+      }
+    });
+  }
+
+  function handleEmitir() {
+    if (!cliente || !servico || !tomador || !valores) {
+      toast.error("Dados incompletos. Volte e preencha todas as etapas.");
+      return;
+    }
+
+    startEmitting(async () => {
+      // Primeiro cria o rascunho
+      const rascunho = await criarRascunhoNfse({
+        clienteMeiId: cliente.clienteMeiId,
+        codigoTributacaoNacional: servico.codigoTributacaoNacional,
+        descricaoServico: servico.descricaoServico,
+        codigoNbs: servico.codigoNbs || undefined,
+        localPrestacaoIbge: servico.localPrestacaoIbge,
+        tomadorTipo: tomador.tomadorTipo,
+        tomadorDocumento: tomador.tomadorDocumento,
+        tomadorNome: tomador.tomadorNome,
+        tomadorEmail: tomador.tomadorEmail || undefined,
+        tomadorCep: tomador.tomadorCep || undefined,
+        tomadorLogradouro: tomador.tomadorLogradouro || undefined,
+        tomadorNumero: tomador.tomadorNumero || undefined,
+        tomadorComplemento: tomador.tomadorComplemento || undefined,
+        tomadorBairro: tomador.tomadorBairro || undefined,
+        tomadorMunicipioIbge: tomador.tomadorMunicipioIbge || undefined,
+        valorServico: valores.valorServico,
+        aliquotaIss: valores.aliquotaIss,
+        tributacaoIssqn: valores.tributacaoIssqn,
+      });
+
+      if (!rascunho.success || !rascunho.data) {
+        toast.error(rascunho.error || "Erro ao criar rascunho");
+        return;
+      }
+
+      // Depois enfileira para emissão
+      const result = await emitirNfse(rascunho.data.id);
+      if (result.success) {
+        toast.success("NFS-e enviada para emissão");
+        router.push("/nfse");
+      } else {
+        toast.error(result.error || "Erro ao emitir NFS-e");
       }
     });
   }
@@ -213,11 +259,16 @@ export function StepConfirmar({ formData, onBack }: StepConfirmarProps) {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            disabled
-            className="gap-2 opacity-50 cursor-not-allowed"
+            onClick={handleEmitir}
+            disabled={saving || emitting}
+            className="gap-2 cursor-pointer"
           >
-            <Lock className="h-4 w-4" />
-            Emitir NFS-e (Fase 3)
+            {emitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            Emitir NFS-e
           </Button>
           <Button
             onClick={handleSalvarRascunho}

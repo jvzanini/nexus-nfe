@@ -90,8 +90,15 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
   - Server actions: criarRascunhoNfse, listarNfses, getNfse
   - Form multi-step de emissão com 5 etapas (/nfse/nova)
   - Página de listagem /nfse com badges de status
+- ✅ **Fase 3** — Transport mTLS + Pipeline de emissão (133 testes passando)
+  - Client mTLS (https.Agent com cert A1)
+  - SEFIN Client tipado (submitNfse, getNfse, headDps) com mock fetch nos testes
+  - Parser de resposta da API (sucesso/erro)
+  - Handler BullMQ de emissão (load cert → decrypt → build DPS → sign → pack → POST → update DB)
+  - Action emitirNfse com validação de certificado + enfileiramento
+  - Botão "Emitir NFS-e" funcional no form (aguarda cert A1 real para teste em homologação)
 
-### Próximo: Fase 3 — Transport mTLS + primeira emissão em homologação
+### Próximo: Fase 4 — Consulta + DANFS-e + download
 Plano detalhado em:
 `docs/superpowers/plans/2026-04-10-nfse-direct-integration.md`
 
@@ -124,7 +131,10 @@ Tudo em `src/lib/nfse/`:
 - `nbs-parser.ts` — parser da planilha NBS (LC 116/2003)
 - `parametros-municipais.ts` — wrapper de parâmetros municipais (mock Fase 1B, real Fase 3)
 - `dps-validator.ts` — validador semântico pré-XML com erros em português
-- `__tests__/` — 13 arquivos, 117 testes
+- `mtls-client.ts` — cria https.Agent para mTLS com cert A1
+- `sefin-client.ts` — HTTP client tipado (submitNfse, getNfse, headDps)
+- `response-parser.ts` — parser de resposta da API SEFIN
+- `__tests__/` — 16 arquivos, 133 testes
 
 Rodar os testes: `npm test`
 Rodar sanity check end-to-end: `npx tsx scripts/nfse-sanity-check.ts`

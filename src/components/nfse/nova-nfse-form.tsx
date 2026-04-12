@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
+import { getNfseDetail } from "@/lib/actions/nfse";
 import { StepCliente } from "@/components/nfse/step-cliente";
 import { StepServico } from "@/components/nfse/step-servico";
 import { StepTomador } from "@/components/nfse/step-tomador";
@@ -47,8 +49,44 @@ export interface NfseFormData {
 }
 
 export function NovaNfseForm() {
+  const searchParams = useSearchParams();
+  const reemitirId = searchParams.get("reemitir");
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<NfseFormData>({});
+
+  useEffect(() => {
+    if (!reemitirId) return;
+    getNfseDetail(reemitirId).then((r) => {
+      if (!r.success || !r.data) return;
+      const n = r.data;
+      setFormData({
+        cliente: {
+          clienteMeiId: n.clienteMeiId,
+          razaoSocial: n.clienteMeiRazaoSocial,
+          cnpj: n.clienteMeiCnpj,
+          municipioIbge: n.clienteMeiMunicipioIbge,
+        },
+        servico: {
+          codigoTributacaoNacional: n.codigoServico,
+          descricaoServico: n.descricaoServico,
+          codigoNbs: n.codigoNbs || "",
+          localPrestacaoIbge: n.localPrestacaoIbge,
+        },
+        tomador: {
+          tomadorTipo: n.tomadorTipo.toLowerCase() as "cpf" | "cnpj",
+          tomadorDocumento: n.tomadorDocumento,
+          tomadorNome: n.tomadorNome,
+          tomadorEmail: n.tomadorEmail || "",
+        },
+        valores: {
+          valorServico: parseFloat(n.valorServico),
+          aliquotaIss: parseFloat(n.aliquotaIss),
+          tributacaoIssqn: 1,
+        },
+      });
+      setCurrentStep(5);
+    });
+  }, [reemitirId]);
 
   function handleStepCliente(data: NfseFormData["cliente"]) {
     setFormData((prev) => ({ ...prev, cliente: data }));

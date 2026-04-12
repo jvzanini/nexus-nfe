@@ -109,6 +109,17 @@ export function NfseContent() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        router.push("/nfse/nova");
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [router]);
+
   async function loadNfses() {
     const filters: NfseFilters = {};
     if (filterStatus) filters.status = filterStatus;
@@ -160,7 +171,7 @@ export function NfseContent() {
           </div>
         </div>
         <Link href="/nfse/nova">
-          <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200">
+          <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200" title="Ctrl+N">
             <Plus className="h-4 w-4" />
             Nova NFS-e
           </Button>

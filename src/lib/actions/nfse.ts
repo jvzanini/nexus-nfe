@@ -30,6 +30,9 @@ export interface NfseListItem {
 }
 
 export interface NfseDetail extends NfseListItem {
+  clienteMeiId: string;
+  clienteMeiCnpj: string;
+  clienteMeiMunicipioIbge: string;
   ambiente: string;
   idDps: string;
   codigoNbs: string | null;
@@ -209,7 +212,7 @@ export async function getNfseDetail(id: string): Promise<ActionResult<NfseDetail
     const n = await prisma.nfse.findUnique({
       where: { id },
       include: {
-        clienteMei: { select: { razaoSocial: true } },
+        clienteMei: { select: { razaoSocial: true, cnpj: true, municipioIbge: true } },
       },
     });
 
@@ -219,6 +222,9 @@ export async function getNfseDetail(id: string): Promise<ActionResult<NfseDetail
       success: true,
       data: {
         id: n.id,
+        clienteMeiId: n.clienteMeiId,
+        clienteMeiCnpj: n.clienteMei.cnpj,
+        clienteMeiMunicipioIbge: n.clienteMei.municipioIbge,
         idDps: n.idDps,
         serie: n.serie,
         numero: n.numero,

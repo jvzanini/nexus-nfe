@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, FileText, Download, Building2, User,
-  Calculator, Clock, AlertTriangle, CheckCircle2, XCircle, Copy,
+  Calculator, Clock, AlertTriangle, CheckCircle2, XCircle, Copy, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -100,6 +101,7 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 export function NfseDetailContent({ id }: { id: string }) {
+  const router = useRouter();
   const [nfse, setNfse] = useState<NfseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -180,6 +182,17 @@ export function NfseDetailContent({ id }: { id: string }) {
 
         {/* Ações */}
         <div className="flex items-center gap-2 sm:ml-auto">
+          {["autorizada", "rejeitada", "erro"].includes(nfse.status) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/nfse/nova?reemitir=${nfse.id}`)}
+              className="gap-2 cursor-pointer"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Emitir novamente
+            </Button>
+          )}
           {nfse.chaveAcesso && (
             <Button variant="outline" size="sm" className="gap-2 cursor-pointer" onClick={handleCopyChave}>
               <Copy className="h-4 w-4" />

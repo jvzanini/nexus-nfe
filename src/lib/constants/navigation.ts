@@ -6,6 +6,7 @@ import {
   FileText,
   Users,
   Settings,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ export interface NavItem {
 
 export const MAIN_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Clientes MEI", href: "/clientes", icon: Building2 },
   { label: "Notas Fiscais", href: "/nfe", icon: FileText },
 ];
 

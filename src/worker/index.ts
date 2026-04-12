@@ -9,10 +9,11 @@
  *  - "outbox" : publica eventos do outbox pattern
  */
 
-import { Worker, type Job } from "bullmq";
+import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
 
 import { prisma } from "../lib/prisma";
+import { checkCertificateExpiration } from "../lib/certificates/check-expiration";
 
 type NfeJobData = {
   clienteMeiId: string;
@@ -22,6 +23,10 @@ type NfeJobData = {
 
 type OutboxJobData = {
   eventId: string;
+};
+
+type CronJobData = {
+  task: "check-cert-expiration";
 };
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -127,13 +132,68 @@ outboxWorker.on("failed", (job, err) => {
 });
 
 // ------------------------------------------------------------
+// Worker: Cron (tarefas recorrentes)
+// ------------------------------------------------------------
+
+const cronQueue = new Queue<CronJobData>("cron", { connection });
+
+const cronWorker = new Worker<CronJobData>(
+  "cron",
+  async (job: Job<CronJobData>) => {
+    switch (job.data.task) {
+      case "check-cert-expiration": {
+        const result = await checkCertificateExpiration();
+        console.log(
+          `[cron] cert-expiration checked=${result.totalChecked} expired=${result.expired} expiring=${result.expiringSoon} notifs=${result.notificationsCreated}`
+        );
+        return result;
+      }
+      default:
+        console.warn(`[cron] unknown task: ${JSON.stringify(job.data)}`);
+        return { ok: false };
+    }
+  },
+  { connection, concurrency: 1 }
+);
+
+cronWorker.on("failed", (job, err) => {
+  console.error(`[cron] job ${job?.id} failed:`, err.message);
+});
+
+// Agenda verificação diária de certificados às 08:00 (horário do servidor).
+// upsertJobScheduler é idempotente — seguro rodar a cada boot do worker.
+async function setupSchedulers() {
+  try {
+    await cronQueue.upsertJobScheduler(
+      "cert-expiration-daily",
+      { pattern: "0 8 * * *" },
+      {
+        name: "check-cert-expiration",
+        data: { task: "check-cert-expiration" },
+        opts: { removeOnComplete: 10, removeOnFail: 10 },
+      }
+    );
+    console.log("[cron] scheduled: cert-expiration-daily @ 08:00");
+  } catch (err) {
+    console.error("[cron] failed to setup schedulers", err);
+  }
+}
+
+void setupSchedulers();
+
+// ------------------------------------------------------------
 // Graceful shutdown
 // ------------------------------------------------------------
 
 async function shutdown(signal: string) {
   console.log(`[worker] received ${signal}, shutting down...`);
   try {
-    await Promise.all([nfeWorker.close(), outboxWorker.close()]);
+    await Promise.all([
+      nfeWorker.close(),
+      outboxWorker.close(),
+      cronWorker.close(),
+    ]);
+    await cronQueue.close();
     await connection.quit();
     await prisma.$disconnect();
   } catch (err) {
@@ -146,4 +206,4 @@ async function shutdown(signal: string) {
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 process.on("SIGINT", () => void shutdown("SIGINT"));
 
-console.log("Worker started (nfe + outbox)");
+console.log("Worker started (nfe + outbox + cron)");

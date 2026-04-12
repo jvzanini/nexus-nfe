@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers/theme-provider";
-import { getResolvedThemeFromCookie } from "@/lib/theme";
+import {
+  getResolvedThemeFromCookie,
+  getThemePreferenceFromCookie,
+} from "@/lib/theme";
 import { APP_CONFIG } from "@/lib/app.config";
 import "./globals.css";
 
@@ -29,7 +32,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const resolvedTheme = await getResolvedThemeFromCookie();
+  const [resolvedTheme, themePref] = await Promise.all([
+    getResolvedThemeFromCookie(),
+    getThemePreferenceFromCookie(),
+  ]);
 
   return (
     <html
@@ -39,7 +45,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <Providers initialTheme={resolvedTheme}>
+        <Providers initialTheme={resolvedTheme} initialPref={themePref}>
           {children}
           <Toaster />
         </Providers>

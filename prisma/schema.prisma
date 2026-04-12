@@ -47,6 +47,30 @@ enum OutboxStatus {
 }
 
 // ============================================================
+// ENUMS NFS-e
+// ============================================================
+
+enum AmbienteNfse {
+  producao_restrita
+  producao
+}
+
+enum NfseStatus {
+  rascunho
+  pendente
+  processando
+  autorizada
+  rejeitada
+  cancelada
+  substituida
+  erro
+}
+
+enum RegimeTributarioMei {
+  mei
+}
+
+// ============================================================
 // CORE — User, Tokens
 // ============================================================
 
@@ -186,8 +210,177 @@ model OutboxEvent {
 }
 
 // ============================================================
-// DOMÍNIO — NFE MEI (esqueleto, será expandido na Fase 2)
+// DOMÍNIO — NFS-e MEI (Fase 1A)
 // ============================================================
-// Os modelos de Cliente MEI, NFe emitida, credenciais GOV.BR, etc
-// serão adicionados quando brainstormamos a fase 2 (emissão).
-// Por enquanto só o esqueleto com auth/users funciona.
+
+model ClienteMei {
+  id                  String              @id @default(uuid()) @db.Uuid
+  cnpj                String              @unique
+  razaoSocial         String              @map("razao_social")
+  nomeFantasia        String?             @map("nome_fantasia")
+  inscricaoMunicipal  String?             @map("inscricao_municipal")
+  email               String?
+  telefone            String?
+  cep                 String
+  logradouro          String
+  numero              String
+  complemento         String?
+  bairro              String
+  municipioIbge       String              @map("municipio_ibge")
+  uf                  String              @db.Char(2)
+  regimeTributario    RegimeTributarioMei @default(mei) @map("regime_tributario")
+  codigoServicoPadrao String?             @map("codigo_servico_padrao")
+  serieDpsAtual       String              @default("00001") @map("serie_dps_atual")
+  ultimoNumeroDps     Int                 @default(0) @map("ultimo_numero_dps")
+  isActive            Boolean             @default(true) @map("is_active")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  createdById         String              @map("created_by") @db.Uuid
+
+  certificados        CertificadoDigital[]
+  nfses               Nfse[]
+  servicosMemorizados ServicoMemorizado[]
+  tomadoresFavoritos  TomadorFavorito[]
+  faturamentoAnual    FaturamentoAnual[]
+
+  @@map("clientes_mei")
+}
+
+model CertificadoDigital {
+  id             String   @id @default(uuid()) @db.Uuid
+  clienteMeiId   String   @map("cliente_mei_id") @db.Uuid
+  nomeArquivo    String   @map("nome_arquivo")
+  pfxEncrypted   String   @map("pfx_encrypted")
+  senhaEncrypted String   @map("senha_encrypted")
+  commonName     String   @map("common_name")
+  thumbprint     String   @unique
+  notBefore      DateTime @map("not_before")
+  notAfter       DateTime @map("not_after")
+  revoked        Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+
+  @@index([clienteMeiId, notAfter], name: "idx_cert_cliente_exp")
+  @@map("certificados_digitais")
+}
+
+model Nfse {
+  id                 String       @id @default(uuid()) @db.Uuid
+  clienteMeiId       String       @map("cliente_mei_id") @db.Uuid
+  ambiente           AmbienteNfse
+  status             NfseStatus   @default(rascunho)
+
+  idDps              String       @unique @map("id_dps")
+  serie              String
+  numero             String
+  dataEmissao        DateTime     @map("data_emissao")
+  dataCompetencia    DateTime     @map("data_competencia") @db.Date
+
+  descricaoServico   String       @map("descricao_servico") @db.Text
+  codigoServico      String       @map("codigo_servico")
+  codigoNbs          String?      @map("codigo_nbs")
+  localPrestacaoIbge String       @map("local_prestacao_ibge")
+  valorServico       Decimal      @map("valor_servico") @db.Decimal(15, 2)
+  aliquotaIss        Decimal      @map("aliquota_iss") @db.Decimal(5, 2)
+  valorIss           Decimal      @map("valor_iss") @db.Decimal(15, 2)
+
+  tomadorTipo        String       @map("tomador_tipo")
+  tomadorDocumento   String       @map("tomador_documento")
+  tomadorNome        String       @map("tomador_nome")
+  tomadorEmail       String?      @map("tomador_email")
+  tomadorEndereco    Json?        @map("tomador_endereco") @db.JsonB
+
+  substitutaDe       String?      @map("substituta_de") @db.Uuid
+  motivoSubstituicao String?      @map("motivo_substituicao")
+
+  xmlAssinado        String?      @map("xml_assinado") @db.Text
+  xmlAutorizado      String?      @map("xml_autorizado") @db.Text
+  pdfBase64          String?      @map("pdf_base64") @db.Text
+  chaveAcesso        String?      @unique @map("chave_acesso")
+  numeroNfse         String?      @map("numero_nfse")
+  dataAutorizacao    DateTime?    @map("data_autorizacao")
+  codigoResposta     String?      @map("codigo_resposta")
+  mensagemResposta   String?      @map("mensagem_resposta") @db.Text
+
+  tentativas         Int          @default(0)
+  ultimoErro         String?      @map("ultimo_erro") @db.Text
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  createdById        String       @map("created_by") @db.Uuid
+
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Restrict)
+
+  @@index([clienteMeiId, createdAt(sort: Desc)], name: "idx_nfse_cliente")
+  @@index([status, createdAt], name: "idx_nfse_status")
+  @@index([chaveAcesso], name: "idx_nfse_chave")
+  @@map("nfses")
+}
+
+model ServicoMemorizado {
+  id                 String    @id @default(uuid()) @db.Uuid
+  clienteMeiId       String    @map("cliente_mei_id") @db.Uuid
+  apelido            String
+  descricaoServico   String    @map("descricao_servico") @db.Text
+  valorPadrao        Decimal   @map("valor_padrao") @db.Decimal(15, 2)
+  codigoServico      String    @map("codigo_servico")
+  codigoNbs          String?   @map("codigo_nbs")
+  localPrestacaoIbge String    @default("5300108") @map("local_prestacao_ibge")
+  usoCount           Int       @default(0) @map("uso_count")
+  ultimoUso          DateTime? @map("ultimo_uso")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteMeiId, apelido])
+  @@index([clienteMeiId, ultimoUso(sort: Desc)], name: "idx_servico_recente")
+  @@map("servicos_memorizados")
+}
+
+model TomadorFavorito {
+  id           String    @id @default(uuid()) @db.Uuid
+  clienteMeiId String    @map("cliente_mei_id") @db.Uuid
+  tipo         String
+  documento    String
+  nome         String
+  email        String?
+  endereco     Json?     @db.JsonB
+  usoCount     Int       @default(0) @map("uso_count")
+  ultimoUso    DateTime? @map("ultimo_uso")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteMeiId, documento])
+  @@index([clienteMeiId, ultimoUso(sort: Desc)], name: "idx_tomador_recente")
+  @@map("tomadores_favoritos")
+}
+
+model FaturamentoAnual {
+  id              String   @id @default(uuid()) @db.Uuid
+  clienteMeiId    String   @map("cliente_mei_id") @db.Uuid
+  ano             Int
+  totalEmitido    Decimal  @default(0) @map("total_emitido") @db.Decimal(15, 2)
+  quantidadeNotas Int      @default(0) @map("quantidade_notas")
+  limiteExcedido  Boolean  @default(false) @map("limite_excedido")
+  alertaEnviado   Boolean  @default(false) @map("alerta_enviado")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteMeiId, ano])
+  @@map("faturamento_anual")
+}
+
+model CodigoTributacaoNacional {
+  codigo       String   @id
+  descricao    String   @db.Text
+  aliquotaMin  Decimal? @map("aliquota_min") @db.Decimal(5, 2)
+  aliquotaMax  Decimal? @map("aliquota_max") @db.Decimal(5, 2)
+  nivel        Int
+  parentCodigo String?  @map("parent_codigo")
+
+  @@index([descricao], name: "idx_nbs_descricao")
+  @@map("codigos_tributacao_nacional")
+}

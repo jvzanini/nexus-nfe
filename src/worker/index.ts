@@ -15,6 +15,7 @@ import IORedis from "ioredis";
 import { prisma } from "../lib/prisma";
 import { checkCertificateExpiration } from "../lib/certificates/check-expiration";
 import { handleEmitNfse } from "./handlers/emit-nfse";
+import { handleReconcileNfse } from "./handlers/reconcile-nfse";
 
 type NfeJobData = {
   nfseId: string;
@@ -26,7 +27,7 @@ type OutboxJobData = {
 };
 
 type CronJobData = {
-  task: "check-cert-expiration";
+  task: "check-cert-expiration" | "reconcile-nfse";
 };
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -145,6 +146,13 @@ const cronWorker = new Worker<CronJobData>(
         );
         return result;
       }
+      case "reconcile-nfse": {
+        const result = await handleReconcileNfse();
+        console.log(
+          `[cron] reconcile checked=${result.checked} recovered=${result.recovered} failed=${result.failed}`
+        );
+        return result;
+      }
       default:
         console.warn(`[cron] unknown task: ${JSON.stringify(job.data)}`);
         return { ok: false };
@@ -171,6 +179,16 @@ async function setupSchedulers() {
       }
     );
     console.log("[cron] scheduled: cert-expiration-daily @ 08:00");
+    await cronQueue.upsertJobScheduler(
+      "reconcile-nfse-5min",
+      { pattern: "*/5 * * * *" }, // a cada 5 minutos
+      {
+        name: "reconcile-nfse",
+        data: { task: "reconcile-nfse" },
+        opts: { removeOnComplete: 10, removeOnFail: 10 },
+      }
+    );
+    console.log("[cron] scheduled: reconcile-nfse-5min @ every 5 min");
   } catch (err) {
     console.error("[cron] failed to setup schedulers", err);
   }

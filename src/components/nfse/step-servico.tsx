@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { NbsSelector } from "@/components/nfse/nbs-selector";
 import { stepServicoSchema } from "@/lib/validation/nfse";
 import type { NfseFormData } from "@/components/nfse/nova-nfse-form";
+import { listarServicosMemorizados, registrarUsoServico, type ServicoMemorizadoItem } from "@/lib/actions/servicos-memorizados";
 
 interface StepServicoProps {
   data: NfseFormData["servico"];
+  clienteMeiId?: string;
   clienteMunicipioIbge?: string;
   onNext: (data: NfseFormData["servico"]) => void;
   onBack: () => void;
@@ -19,6 +21,7 @@ interface StepServicoProps {
 
 export function StepServico({
   data,
+  clienteMeiId,
   clienteMunicipioIbge,
   onNext,
   onBack,
@@ -32,6 +35,18 @@ export function StepServico({
     data?.localPrestacaoIbge ?? clienteMunicipioIbge ?? ""
   );
   const [descricaoNbs, setDescricaoNbs] = useState(data?.descricaoNbs ?? "");
+
+  const [memorizados, setMemorizados] = useState<ServicoMemorizadoItem[]>([]);
+  const [loadingMem, setLoadingMem] = useState(false);
+
+  useEffect(() => {
+    if (!clienteMeiId) return;
+    setLoadingMem(true);
+    listarServicosMemorizados(clienteMeiId).then((r) => {
+      if (r.success && r.data) setMemorizados(r.data);
+      setLoadingMem(false);
+    });
+  }, [clienteMeiId]);
 
   function handleNbsSelect(codigo: string, descricaoNbsItem: string) {
     setCodigoNbs(codigo);
@@ -74,6 +89,36 @@ export function StepServico({
           Selecione o código do serviço e descreva a atividade prestada
         </p>
       </div>
+
+      {/* Serviços recentes */}
+      {memorizados.length > 0 && (
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            Serviços recentes
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {memorizados.slice(0, 5).map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  setCodigoTributacao(s.codigoServico);
+                  setDescricao(s.descricaoServico);
+                  setCodigoNbs(s.codigoNbs ?? "");
+                  setLocalIbge(s.localPrestacaoIbge);
+                  setDescricaoNbs("");
+                  registrarUsoServico(s.id);
+                }}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors cursor-pointer"
+              >
+                <span className="font-medium text-foreground">{s.apelido}</span>
+                <span className="text-xs text-muted-foreground">({s.codigoServico})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* NBS Selector */}
       <div className="space-y-2">

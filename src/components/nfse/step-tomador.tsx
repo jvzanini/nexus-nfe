@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { stepTomadorSchema } from "@/lib/validation/nfse";
 import type { NfseFormData } from "@/components/nfse/nova-nfse-form";
+import { listarTomadoresFavoritos, registrarUsoTomador, type TomadorFavoritoItem } from "@/lib/actions/tomadores-favoritos";
 
 interface StepTomadorProps {
   data: NfseFormData["tomador"];
+  clienteMeiId?: string;
   onNext: (data: NfseFormData["tomador"]) => void;
   onBack: () => void;
 }
@@ -37,7 +39,7 @@ function formatCep(v: string) {
   return d.replace(/^(\d{5})(\d)/, "$1-$2");
 }
 
-export function StepTomador({ data, onNext, onBack }: StepTomadorProps) {
+export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorProps) {
   const [tipo, setTipo] = useState<"cpf" | "cnpj">(data?.tomadorTipo ?? "cpf");
   const [documento, setDocumento] = useState(data?.tomadorDocumento ?? "");
   const [nome, setNome] = useState(data?.tomadorNome ?? "");
@@ -53,6 +55,15 @@ export function StepTomador({ data, onNext, onBack }: StepTomadorProps) {
   const [municipioIbge, setMunicipioIbge] = useState(
     data?.tomadorMunicipioIbge ?? ""
   );
+
+  const [favoritos, setFavoritos] = useState<TomadorFavoritoItem[]>([]);
+
+  useEffect(() => {
+    if (!clienteMeiId) return;
+    listarTomadoresFavoritos(clienteMeiId).then((r) => {
+      if (r.success && r.data) setFavoritos(r.data);
+    });
+  }, [clienteMeiId]);
 
   function handleDocumentoChange(value: string) {
     if (tipo === "cpf") {
@@ -99,6 +110,45 @@ export function StepTomador({ data, onNext, onBack }: StepTomadorProps) {
           Informe os dados de quem está contratando o serviço
         </p>
       </div>
+
+      {/* Tomadores recentes */}
+      {favoritos.length > 0 && (
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            Tomadores recentes
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {favoritos.slice(0, 5).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  const newTipo = t.tipo === "cnpj" ? "cnpj" : "cpf";
+                  setTipo(newTipo as "cpf" | "cnpj");
+                  setDocumento(newTipo === "cpf" ? formatCpf(t.documento) : formatCnpj(t.documento));
+                  setNome(t.nome);
+                  setEmail(t.email ?? "");
+                  if (t.endereco) {
+                    setShowEndereco(true);
+                    setCep(t.endereco.cep ? formatCep(t.endereco.cep) : "");
+                    setLogradouro(t.endereco.logradouro ?? "");
+                    setNumero(t.endereco.numero ?? "");
+                    setComplemento(t.endereco.complemento ?? "");
+                    setBairro(t.endereco.bairro ?? "");
+                    setMunicipioIbge(t.endereco.municipioIbge ?? "");
+                  }
+                  registrarUsoTomador(t.id);
+                }}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:bg-accent/50 transition-colors cursor-pointer"
+              >
+                <span className="font-medium text-foreground">{t.nome}</span>
+                <span className="text-xs text-muted-foreground">{t.documento}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tipo de documento */}
       <div className="space-y-2">

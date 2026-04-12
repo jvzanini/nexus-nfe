@@ -163,6 +163,7 @@ export function NovaNfseForm() {
         {currentStep === 2 && (
           <StepServico
             data={formData.servico}
+            clienteMeiId={formData.cliente?.clienteMeiId}
             clienteMunicipioIbge={formData.cliente?.municipioIbge}
             onNext={handleStepServico}
             onBack={handleBack}
@@ -171,6 +172,7 @@ export function NovaNfseForm() {
         {currentStep === 3 && (
           <StepTomador
             data={formData.tomador}
+            clienteMeiId={formData.cliente?.clienteMeiId}
             onNext={handleStepTomador}
             onBack={handleBack}
           />

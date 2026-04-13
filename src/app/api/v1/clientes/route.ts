@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiKey } from "@/lib/api/auth";
-import { apiSuccess, withErrorHandler } from "@/lib/api/response";
+import { apiSuccess, apiCreated, apiError, withErrorHandler } from "@/lib/api/response";
 
 /**
  * GET /api/v1/clientes — Lista clientes MEI
@@ -58,4 +58,53 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   });
 
   return apiSuccess(data, 200, { total, limit, page: Math.floor(offset / limit) + 1 });
+});
+
+/**
+ * POST /api/v1/clientes — Criar cliente MEI
+ */
+export const POST = withErrorHandler(async (request: NextRequest) => {
+  await requireApiKey(request);
+
+  const body = await request.json();
+
+  // Validate required fields
+  const { cnpj, razaoSocial, cep, logradouro, numero, bairro, municipioIbge, uf } = body;
+  if (!cnpj || !razaoSocial || !cep || !logradouro || !numero || !bairro || !municipioIbge || !uf) {
+    return apiError("VALIDATION", "Campos obrigatórios: cnpj, razaoSocial, cep, logradouro, numero, bairro, municipioIbge, uf", 422);
+  }
+
+  const cnpjClean = cnpj.replace(/\D/g, "");
+  if (cnpjClean.length !== 14) {
+    return apiError("VALIDATION", "CNPJ deve ter 14 dígitos", 422);
+  }
+
+  // Check duplicate
+  const existing = await prisma.clienteMei.findUnique({ where: { cnpj: cnpjClean } });
+  if (existing) {
+    return apiError("DUPLICATE", "CNPJ já cadastrado", 409);
+  }
+
+  const cliente = await prisma.clienteMei.create({
+    data: {
+      cnpj: cnpjClean,
+      razaoSocial: body.razaoSocial,
+      nomeFantasia: body.nomeFantasia ?? null,
+      inscricaoMunicipal: body.inscricaoMunicipal ?? null,
+      email: body.email ?? null,
+      telefone: body.telefone ?? null,
+      cep: body.cep.replace(/\D/g, ""),
+      logradouro: body.logradouro,
+      numero: body.numero,
+      complemento: body.complemento ?? null,
+      bairro: body.bairro,
+      municipioIbge: body.municipioIbge.replace(/\D/g, ""),
+      uf: body.uf.toUpperCase(),
+      codigoServicoPadrao: body.codigoServicoPadrao ?? null,
+      createdById: "api",
+    },
+    select: { id: true, cnpj: true, razaoSocial: true, createdAt: true },
+  });
+
+  return apiCreated(cliente);
 });

@@ -1,0 +1,115 @@
+name: Create Portainer Stack
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-stack:
+    runs-on: ubuntu-latest
+    env:
+      PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+      PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if stack already exists
+        id: check
+        run: |
+          STACKS=$(curl --insecure -s \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/stacks")
+
+          STACK_ID=$(echo "$STACKS" | python3 -c "
+          import sys,json
+          for s in json.load(sys.stdin):
+              if s['Name'] == 'nexus-nfe':
+                  print(s['Id']); break
+          " 2>/dev/null || echo "")
+
+          if [ -n "$STACK_ID" ]; then
+            echo "Stack already exists with ID: $STACK_ID"
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "stack_id=$STACK_ID" >> $GITHUB_OUTPUT
+          else
+            echo "Stack does not exist, will create"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pull image first
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          AUTH=$(echo -n "{\"username\":\"jvzanini\",\"password\":\"${GHCR_TOKEN}\"}" | base64 -w 0)
+          curl --insecure -X POST \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            -H "X-Registry-Auth: ${AUTH}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/images/create?fromImage=ghcr.io/jvzanini/nexus-nfe&tag=latest" \
+            -o /dev/null -w "Pull: HTTP %{http_code}\n"
+
+      - name: Create stack
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          COMPOSE=$(cat docker-compose.yml | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
+
+          ENV_VARS='[
+            {"name":"DB_PASSWORD","value":"***REMOVED-DB-PASSWORD***"},
+            {"name":"NEXTAUTH_SECRET","value":"***REMOVED-NEXTAUTH-SECRET***"},
+            {"name":"ENCRYPTION_KEY","value":"***REMOVED-ENCRYPTION-KEY***"},
+            {"name":"RESEND_API_KEY","value":"***REMOVED-RESEND-KEY***"},
+            {"name":"ADMIN_EMAIL","value":"admin@nexusai360.com"},
+            {"name":"ADMIN_PASSWORD","value":"iws34Zlmup0a"}
+          ]'
+
+          BODY=$(python3 -c "
+          import json
+          compose = open('docker-compose.yml').read()
+          env_vars = json.loads('''${ENV_VARS}''')
+          payload = {
+              'Name': 'nexus-nfe',
+              'StackFileContent': compose,
+              'Env': env_vars,
+              'SwarmID': ''
+          }
+          print(json.dumps(payload))
+          ")
+
+          # Get swarm ID
+          SWARM_ID=$(curl --insecure -s \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/swarm" | python3 -c "import sys,json; print(json.load(sys.stdin)['ID'])")
+
+          echo "Swarm ID: $SWARM_ID"
+
+          # Create stack via Portainer API
+          RESULT=$(curl --insecure -s -X POST \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"Name\": \"nexus-nfe\",
+              \"StackFileContent\": $(cat docker-compose.yml | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'),
+              \"Env\": ${ENV_VARS},
+              \"SwarmID\": \"${SWARM_ID}\"
+            }" \
+            "${PORTAINER_URL}/api/stacks/create/swarm/string?endpointId=1")
+
+          echo "Create result: $RESULT" | head -c 500
+
+          # Check if successful
+          STACK_ID=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('Id', 'FAILED'))" 2>/dev/null || echo "FAILED")
+
+          if [ "$STACK_ID" != "FAILED" ]; then
+            echo "Stack created successfully! ID: $STACK_ID"
+          else
+            echo "Stack creation may have failed. Check Portainer manually."
+            echo "Full response: $RESULT"
+          fi
+
+      - name: Run Prisma migrations
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          echo "Waiting 30s for database to be ready..."
+          sleep 30
+
+          echo "Stack created. Prisma migrations need to be applied."
+          echo "Run: docker exec \$(docker ps -q -f name=nexus-nfe_app) npx prisma migrate deploy"
+          echo "Or use Portainer console to run the migration."

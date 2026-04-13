@@ -30,9 +30,9 @@ export function apiError(code: string, message: string, status = 400): NextRespo
  * Wrapper para route handlers que captura ApiError e erros genéricos.
  */
 export function withErrorHandler(
-  handler: (request: Request, context?: unknown) => Promise<NextResponse>
+  handler: (request: any, context?: any) => Promise<NextResponse>
 ) {
-  return async (request: Request, context?: unknown): Promise<NextResponse> => {
+  return async (request: any, context?: any): Promise<NextResponse> => {
     try {
       return await handler(request, context);
     } catch (error) {

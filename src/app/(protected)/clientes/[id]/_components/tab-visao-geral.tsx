@@ -13,9 +13,23 @@ import {
   FileDigit,
   Calendar,
   Receipt,
+  BarChart3,
+  Users,
+  Wrench,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { MeiFaturamentoBanner } from "@/components/nfse/mei-faturamento-banner";
-import { listarNfses, type NfseListItem } from "@/lib/actions/nfse";
+import { listarNfses, getEmpresaChartData, type NfseListItem } from "@/lib/actions/nfse";
+import { listarTomadoresFavoritos } from "@/lib/actions/tomadores-favoritos";
+import { listarServicosMemorizados } from "@/lib/actions/servicos-memorizados";
 import type { ClienteMeiDetail } from "@/lib/actions/clientes-mei";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -85,6 +99,9 @@ function InfoRow({
 
 export function TabVisaoGeral({ empresa }: TabVisaoGeralProps) {
   const [nfses, setNfses] = useState<NfseListItem[] | null>(null);
+  const [chartData, setChartData] = useState<Array<{ month: string; autorizadas: number; rejeitadas: number }>>([]);
+  const [totalTomadores, setTotalTomadores] = useState(0);
+  const [totalServicos, setTotalServicos] = useState(0);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -97,6 +114,18 @@ export function TabVisaoGeral({ empresa }: TabVisaoGeralProps) {
       } catch (error) {
         console.error("[tab-visao-geral] Erro ao buscar notas:", error);
       }
+    });
+
+    getEmpresaChartData(empresa.id).then((r) => {
+      if (r.success && r.data) setChartData(r.data);
+    });
+
+    listarTomadoresFavoritos(empresa.id).then((r) => {
+      if (r.success && r.data) setTotalTomadores(r.data.length);
+    });
+
+    listarServicosMemorizados(empresa.id).then((r) => {
+      if (r.success && r.data) setTotalServicos(r.data.length);
     });
   }, [empresa.id]);
 
@@ -151,6 +180,76 @@ export function TabVisaoGeral({ empresa }: TabVisaoGeralProps) {
 
           {/* Faturamento banner */}
           <MeiFaturamentoBanner clienteMeiId={empresa.id} />
+
+          {/* Chart + Resumo */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <div className="rounded-xl border border-border bg-card p-5 h-full">
+                <div className="flex items-center gap-2 mb-4">
+                  <BarChart3 className="h-4 w-4 text-violet-400" />
+                  <h3 className="text-sm font-medium text-foreground/80">Últimos 6 meses</h3>
+                </div>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} barGap={2}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fill: "#71717a", fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "#71717a", fontSize: 12 }}
+                        width={30}
+                        allowDecimals={false}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#18181b",
+                          border: "1px solid #3f3f46",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          color: "#a1a1aa",
+                        }}
+                        labelStyle={{ color: "#d4d4d8" }}
+                        cursor={{ fill: "rgba(63, 63, 70, 0.3)" }}
+                      />
+                      <Bar dataKey="autorizadas" name="Autorizadas" fill="#34d399" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="rejeitadas" name="Rejeitadas" fill="#f87171" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+            <div className="lg:col-span-1">
+              <div className="rounded-xl border border-border bg-card p-5 h-full">
+                <h3 className="text-sm font-medium text-foreground/80 mb-5">Resumo</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-lg bg-violet-500/10">
+                      <Users className="h-5 w-5 text-violet-400" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold tabular-nums">{totalTomadores}</p>
+                      <p className="text-xs text-muted-foreground">Tomadores cadastrados</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10">
+                      <Wrench className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold tabular-nums">{totalServicos}</p>
+                      <p className="text-xs text-muted-foreground">Serviços memorizados</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Info card */}
           <div className="rounded-xl border border-border bg-card p-6">

@@ -299,6 +299,59 @@ export async function downloadXmlNfse(
   }
 }
 
+/**
+ * Retorna dados para gráfico de emissões mensais de uma empresa.
+ */
+export async function getEmpresaChartData(
+  clienteMeiId: string
+): Promise<ActionResult<Array<{ month: string; autorizadas: number; rejeitadas: number }>>> {
+  try {
+    await requireRole("admin");
+
+    // Last 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const nfses = await prisma.nfse.findMany({
+      where: {
+        clienteMeiId,
+        dataEmissao: { gte: sixMonthsAgo },
+      },
+      select: { status: true, dataEmissao: true },
+    });
+
+    const monthMap = new Map<string, { autorizadas: number; rejeitadas: number }>();
+
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthMap.set(key, { autorizadas: 0, rejeitadas: 0 });
+    }
+
+    for (const n of nfses) {
+      const key = `${n.dataEmissao.getFullYear()}-${String(n.dataEmissao.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthMap.has(key)) continue;
+      const entry = monthMap.get(key)!;
+      if (n.status === "autorizada") entry.autorizadas++;
+      if (["rejeitada", "erro"].includes(n.status)) entry.rejeitadas++;
+    }
+
+    const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+    const data = Array.from(monthMap.entries()).map(([key, vals]) => ({
+      month: monthNames[parseInt(key.split("-")[1]) - 1],
+      ...vals,
+    }));
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("[nfse.getEmpresaChartData]", error);
+    return { success: false, error: "Erro ao carregar dados do gráfico" };
+  }
+}
+
 export async function listarNfsesComFiltros(
   filters: NfseFilters = {}
 ): Promise<ActionResult<NfseListItem[]>> {

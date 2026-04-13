@@ -29,6 +29,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { TutorialDialog } from "@/components/nfse/tutorial-dialog";
 import { toast } from "sonner";
 import { listarNfsesComFiltros, type NfseFilters, type NfseListItem } from "@/lib/actions/nfse";
@@ -309,59 +310,58 @@ export function NfseContent() {
             className="pl-9"
           />
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {["", "rascunho", "pendente", "processando", "autorizada", "rejeitada", "erro"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors cursor-pointer ${
-                filterStatus === s
-                  ? "bg-violet-600 text-white border-violet-600"
-                  : "bg-transparent text-muted-foreground border-border hover:border-violet-500/50"
-              }`}
-            >
-              {s === "" ? "Todos" : (statusConfig[s]?.label ?? s)}
-            </button>
-          ))}
-        </div>
-        <select
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          triggerClassName="w-[180px]"
+          options={[
+            { value: "", label: "Todos os status" },
+            { value: "rascunho", label: "Rascunho" },
+            { value: "pendente", label: "Pendente" },
+            { value: "processando", label: "Processando" },
+            { value: "autorizada", label: "Autorizada" },
+            { value: "rejeitada", label: "Rejeitada" },
+            { value: "cancelada", label: "Cancelada" },
+            { value: "erro", label: "Erro" },
+          ]}
+        />
+        <CustomSelect
           value={filterTomador}
-          onChange={(e) => setFilterTomador(e.target.value)}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground cursor-pointer focus:border-violet-500 focus:outline-none"
-        >
-          <option value="">Todos os tomadores</option>
-          {uniqueTomadores.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
+          onChange={setFilterTomador}
+          triggerClassName="w-[200px]"
+          options={[
+            { value: "", label: "Todos os tomadores" },
+            ...uniqueTomadores.map((t) => ({ value: t, label: t })),
+          ]}
+        />
         {/* Agrupamento */}
         <div className="flex items-center gap-1 border border-border rounded-lg p-0.5">
           <button
             onClick={() => setGroupBy("none")}
-            className={`rounded px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+            className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
               groupBy === "none" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
             }`}
             title="Lista simples"
           >
-            <List className="h-3.5 w-3.5" />
+            <List className="h-4 w-4" />
           </button>
           <button
             onClick={() => setGroupBy("empresa")}
-            className={`rounded px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+            className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
               groupBy === "empresa" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
             }`}
             title="Agrupar por empresa"
           >
-            <Building2 className="h-3.5 w-3.5" />
+            <Building2 className="h-4 w-4" />
           </button>
           <button
             onClick={() => setGroupBy("tomador")}
-            className={`rounded px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+            className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
               groupBy === "tomador" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
             }`}
             title="Agrupar por tomador"
           >
-            <User className="h-3.5 w-3.5" />
+            <User className="h-4 w-4" />
           </button>
         </div>
       </motion.div>

@@ -132,15 +132,18 @@ export function StepValores({
         <p className="text-sm text-muted-foreground mt-1">
           Informe o valor do serviço e a alíquota do ISS
         </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Campos marcados com <span className="text-red-500">*</span> são obrigatórios
+        </p>
       </div>
 
       {/* Banner de faturamento anual MEI */}
-      {clienteMeiId && <MeiFaturamentoBanner clienteMeiId={clienteMeiId} />}
+      {clienteMeiId && <MeiFaturamentoBanner clienteMeiId={clienteMeiId} valorAdicional={valor} />}
 
       {/* Valor do serviço */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Valor do Serviço (R$)
+          Valor do Serviço (R$) <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -179,7 +182,7 @@ export function StepValores({
       {/* Alíquota ISS */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Alíquota ISS (%)
+          Alíquota ISS (%) <span className="text-red-500 ml-0.5">*</span>
           {loadingParams && (
             <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin" />
           )}

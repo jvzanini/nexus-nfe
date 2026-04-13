@@ -109,6 +109,9 @@ export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorP
         <p className="text-sm text-muted-foreground mt-1">
           Informe os dados de quem está contratando o serviço
         </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Campos marcados com <span className="text-red-500">*</span> são obrigatórios
+        </p>
       </div>
 
       {/* Tomadores recentes */}
@@ -153,7 +156,7 @@ export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorP
       {/* Tipo de documento */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Tipo de Documento
+          Tipo de Documento <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <div className="flex gap-2">
           <Button
@@ -186,7 +189,7 @@ export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorP
       {/* Documento */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          {tipo === "cpf" ? "CPF" : "CNPJ"}
+          {tipo === "cpf" ? "CPF" : "CNPJ"} <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <Input
           value={documento}
@@ -199,7 +202,7 @@ export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorP
       {/* Nome */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Nome / Razão Social
+          Nome / Razão Social <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <Input
           value={nome}

@@ -88,6 +88,9 @@ export function StepServico({
         <p className="text-sm text-muted-foreground mt-1">
           Selecione o código do serviço e descreva a atividade prestada
         </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Campos marcados com <span className="text-red-500">*</span> são obrigatórios
+        </p>
       </div>
 
       {/* Serviços recentes */}
@@ -135,7 +138,7 @@ export function StepServico({
       {/* Código de Tributação */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Código de Tributação Nacional
+          Código de Tributação Nacional <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <Input
           value={codigoTributacao}
@@ -152,7 +155,7 @@ export function StepServico({
       {/* Descrição */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Descrição do Serviço
+          Descrição do Serviço <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <textarea
           value={descricao}
@@ -170,7 +173,7 @@ export function StepServico({
       {/* Município de prestação */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground/80">
-          Município de Prestação (Código IBGE)
+          Município de Prestação (Código IBGE) <span className="text-red-500 ml-0.5">*</span>
         </Label>
         <Input
           value={localIbge}

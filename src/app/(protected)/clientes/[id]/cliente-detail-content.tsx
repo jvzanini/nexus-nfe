@@ -10,7 +10,7 @@ import { TabVisaoGeral } from "./_components/tab-visao-geral";
 import { TabCertificado } from "./_components/tab-certificado";
 import { TabTomadores } from "./_components/tab-tomadores";
 import { TabNotas } from "./_components/tab-notas";
-import { TabConfiguracoes } from "./_components/tab-configuracoes";
+import { TabMembros } from "./_components/tab-membros";
 import type { ClienteMeiDetail } from "@/lib/actions/clientes-mei";
 import type { CertificadoListItem } from "@/lib/actions/certificados";
 
@@ -24,7 +24,7 @@ const VALID_TABS = [
   "certificado",
   "tomadores",
   "notas",
-  "configuracoes",
+  "membros",
 ];
 
 export function ClienteDetailContent({ cliente, certificados }: Props) {
@@ -69,7 +69,7 @@ export function ClienteDetailContent({ cliente, certificados }: Props) {
             <TabsTrigger value="certificado">Certificado</TabsTrigger>
             <TabsTrigger value="tomadores">Tomadores</TabsTrigger>
             <TabsTrigger value="notas">Notas Fiscais</TabsTrigger>
-            <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+            <TabsTrigger value="membros">Membros</TabsTrigger>
           </TabsList>
         </div>
 
@@ -89,8 +89,8 @@ export function ClienteDetailContent({ cliente, certificados }: Props) {
           <TabNotas empresaId={cliente.id} />
         </TabsContent>
 
-        <TabsContent value="configuracoes">
-          <TabConfiguracoes empresa={cliente} />
+        <TabsContent value="membros">
+          <TabMembros empresaId={cliente.id} />
         </TabsContent>
       </Tabs>
     </motion.div>

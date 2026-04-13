@@ -94,6 +94,7 @@ model User {
   auditLogs           AuditLog[]           @relation("AuditActor")
   passwordResetTokens PasswordResetToken[]
   emailChangeTokens   EmailChangeToken[]
+  empresaMemberships  EmpresaMembership[]
 
   @@map("users")
 }
@@ -242,6 +243,7 @@ model ClienteMei {
   servicosMemorizados ServicoMemorizado[]
   tomadoresFavoritos  TomadorFavorito[]
   faturamentoAnual    FaturamentoAnual[]
+  memberships         EmpresaMembership[]
 
   @@map("clientes_mei")
 }
@@ -383,4 +385,23 @@ model CodigoTributacaoNacional {
 
   @@index([descricao], name: "idx_nbs_descricao")
   @@map("codigos_tributacao_nacional")
+}
+
+// ============================================================
+// MÓDULO: Empresa Memberships
+// ============================================================
+
+model EmpresaMembership {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  clienteMeiId String   @map("cliente_mei_id") @db.Uuid
+  role         String   @default("viewer") // company_admin, manager, viewer
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clienteMeiId])
+  @@index([clienteMeiId], name: "idx_membership_empresa")
+  @@map("empresa_memberships")
 }

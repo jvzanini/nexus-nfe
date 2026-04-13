@@ -1,0 +1,563 @@
+"use client";
+
+import { useState, useEffect, useTransition, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { CustomSelect } from "@/components/ui/custom-select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  UserPlus,
+  Trash2,
+  Shield,
+  ShieldCheck,
+  Eye,
+  Users,
+  Loader2,
+  AlertTriangle,
+  Crown,
+  ChevronDown,
+  Check,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  listMembers,
+  addMember,
+  updateMemberRole,
+  removeMember,
+  listAvailableUsers,
+  type MemberItem,
+} from "@/lib/actions/empresa-memberships";
+
+// --- Role styles (padrão Roteador) ---
+
+const PLATFORM_ROLE_STYLES: Record<string, { label: string; className: string }> = {
+  super_admin: { label: "Super Admin", className: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  admin: { label: "Admin", className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+  manager: { label: "Gerente", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" },
+  viewer: { label: "Visualizador", className: "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700" },
+};
+
+const COMPANY_ROLE_STYLES: Record<string, { label: string; className: string }> = {
+  company_admin: { label: "Admin", className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+  manager: { label: "Gerente", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30" },
+  viewer: { label: "Visualizador", className: "bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700" },
+};
+
+const COMPANY_ROLE_OPTIONS = [
+  { value: "company_admin", label: "Admin", description: "Gerencia a empresa", bg: "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400" },
+  { value: "manager", label: "Gerente", description: "Gerencia notas e tomadores", bg: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400" },
+  { value: "viewer", label: "Visualizador", description: "Apenas visualização", bg: "bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400" },
+];
+
+// --- Icons ---
+
+const ROLE_ICONS: Record<string, { element: React.ReactNode; component: typeof ShieldCheck }> = {
+  company_admin: { element: <ShieldCheck className="size-3" />, component: ShieldCheck },
+  manager: { element: <Shield className="size-3" />, component: Shield },
+  viewer: { element: <Eye className="size-3" />, component: Eye },
+};
+
+const roleLabels: Record<string, { label: string; icon: React.ReactNode; className: string }> = Object.fromEntries(
+  Object.entries(COMPANY_ROLE_STYLES).map(([key, style]) => [
+    key,
+    { ...style, icon: ROLE_ICONS[key]?.element ?? <Eye className="size-3" /> },
+  ])
+);
+
+const companyRoleSelectOptions = COMPANY_ROLE_OPTIONS.map((opt) => ({
+  ...opt,
+  icon: ROLE_ICONS[opt.value]?.component ?? Eye,
+}));
+
+function getCompanyRoleBadgeStyle(val: string) {
+  const opt = COMPANY_ROLE_OPTIONS.find((o) => o.value === val);
+  const icon = ROLE_ICONS[val]?.component ?? Eye;
+  return { bg: opt?.bg ?? "bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", icon };
+}
+
+// --- Animations ---
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      ease: [0.4, 0, 0.2, 1] as const,
+    },
+  },
+} as const;
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] as const },
+  },
+} as const;
+
+// --- MemberBadgeSelect (inline role picker) ---
+
+function MemberBadgeSelect({
+  value,
+  onChange,
+  options,
+  getBadgeStyle,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string; description?: string; bg: string; icon: React.ComponentType<{ className?: string }> }[];
+  getBadgeStyle: (value: string) => { bg: string; icon: React.ComponentType<{ className?: string }> };
+}) {
+  const [open, setOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const ref = useRef<HTMLDivElement>(null);
+  const current = getBadgeStyle(value);
+  const CurrentIcon = current.icon;
+  const currentOption = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleToggle() {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: "fixed" as const,
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 300),
+        zIndex: 100,
+      });
+    }
+    setOpen(!open);
+  }
+
+  return (
+    <div ref={ref} className="relative inline-flex">
+      <button
+        onClick={handleToggle}
+        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all hover:opacity-80 ${current.bg}`}
+      >
+        <CurrentIcon className="h-3 w-3" />
+        {currentOption?.label ?? value}
+        <ChevronDown className={`h-3 w-3 ml-0.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            style={dropdownStyle}
+            className="rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
+          >
+            {options.map((option) => {
+              const OptionIcon = option.icon;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => { onChange(option.value); setOpen(false); }}
+                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left cursor-pointer transition-all hover:bg-accent ${value === option.value ? "bg-accent/50" : ""}`}
+                >
+                  <OptionIcon className={`h-4 w-4 shrink-0 ${option.bg.includes("purple") ? "text-purple-400" : option.bg.includes("blue") ? "text-blue-400" : option.bg.includes("amber") ? "text-amber-400" : "text-muted-foreground"}`} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground">{option.label}</span>
+                    {option.description && (
+                      <span className="block text-xs text-muted-foreground">{option.description}</span>
+                    )}
+                  </div>
+                  {value === option.value && <Check className="h-4 w-4 text-primary shrink-0" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// --- TabMembros ---
+
+interface TabMembrosProps {
+  empresaId: string;
+}
+
+export function TabMembros({ empresaId }: TabMembrosProps) {
+  const [members, setMembers] = useState<MemberItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<Array<{ id: string; name: string; email: string; platformRole: string }>>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("viewer");
+  const [deletingMember, setDeletingMember] = useState<MemberItem | null>(null);
+
+  const fetchMembers = useCallback(async () => {
+    const result = await listMembers(empresaId);
+    if (result.success && result.data) {
+      setMembers(result.data);
+    } else {
+      toast.error(result.error || "Erro ao carregar membros");
+    }
+    setLoading(false);
+  }, [empresaId]);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { fetchMembers(); }, [fetchMembers]);
+
+  function handleOpenAddForm() {
+    setShowAddForm(true);
+    startTransition(async () => {
+      const result = await listAvailableUsers(empresaId);
+      if (result.success && result.data) {
+        setAvailableUsers(result.data);
+      }
+    });
+  }
+
+  function handleCancelAdd() {
+    setShowAddForm(false);
+    setSelectedUserId("");
+    setSelectedRole("viewer");
+  }
+
+  function handleAddMember() {
+    if (!selectedUserId) {
+      toast.error("Selecione um usuário");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await addMember(empresaId, selectedUserId, selectedRole);
+
+      if (result.success) {
+        toast.success("Membro adicionado com sucesso");
+        handleCancelAdd();
+        await fetchMembers();
+      } else {
+        toast.error(result.error || "Erro ao adicionar membro");
+      }
+    });
+  }
+
+  function handleRoleChange(membershipId: string, newRole: string) {
+    startTransition(async () => {
+      const result = await updateMemberRole(membershipId, newRole);
+
+      if (result.success) {
+        toast.success("Papel atualizado");
+        await fetchMembers();
+      } else {
+        toast.error(result.error || "Erro ao atualizar papel");
+      }
+    });
+  }
+
+  function handleConfirmRemoveMember() {
+    if (!deletingMember) return;
+
+    startTransition(async () => {
+      const result = await removeMember(deletingMember.id);
+
+      if (result.success) {
+        toast.success("Membro removido");
+        setDeletingMember(null);
+        await fetchMembers();
+      } else {
+        toast.error(result.error || "Erro ao remover membro");
+      }
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-10 bg-muted/50 rounded-lg animate-pulse" />
+        <div className="h-64 bg-muted/50 rounded-xl animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-4"
+    >
+      {/* Header */}
+      <motion.div
+        variants={itemVariants}
+        className="flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2">
+          <Users className="size-5 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-foreground/80">
+            {members.length} {members.length === 1 ? "membro" : "membros"}
+          </h3>
+        </div>
+        {!showAddForm && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-border bg-muted/50 text-foreground/80 hover:bg-accent hover:text-foreground cursor-pointer transition-all duration-200"
+            onClick={handleOpenAddForm}
+            disabled={isPending}
+            title="Adicionar novo membro"
+          >
+            <UserPlus className="size-4 mr-1" />
+            Adicionar Membro
+          </Button>
+        )}
+      </motion.div>
+
+      {/* Formulário de adicionar membro */}
+      {showAddForm && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="space-y-4 rounded-xl border border-border bg-card p-4"
+        >
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground/80">Usuário</label>
+            {availableUsers.length === 0 ? (
+              <div className="text-sm text-muted-foreground px-3 py-2 border border-border rounded-lg bg-muted/30">
+                Nenhum usuário disponível
+              </div>
+            ) : (
+              <CustomSelect
+                value={selectedUserId}
+                onChange={(v) => {
+                  setSelectedUserId(v);
+                  const selectedUser = availableUsers.find((u) => u.id === v);
+                  if (selectedUser?.platformRole === "viewer") {
+                    setSelectedRole("viewer");
+                  }
+                }}
+                placeholder="Selecione um usuário"
+                options={availableUsers.map((user) => {
+                  const pl = PLATFORM_ROLE_STYLES[user.platformRole] || PLATFORM_ROLE_STYLES.viewer;
+                  return {
+                    value: user.id,
+                    label: user.name,
+                    description: user.email,
+                    icon: <span className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${pl.className}`}>{pl.label}</span>,
+                  };
+                })}
+              />
+            )}
+          </div>
+          <div className="flex items-end gap-4 flex-wrap">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80 block mb-1">Papel</label>
+              {(() => {
+                const selectedUser = availableUsers.find((u) => u.id === selectedUserId);
+                const isViewerPlatform = selectedUser?.platformRole === "viewer";
+
+                if (isViewerPlatform) {
+                  return (
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700">
+                      <Eye className="size-3" />
+                      Visualizador
+                    </span>
+                  );
+                }
+
+                return (
+                  <MemberBadgeSelect
+                    value={selectedRole}
+                    onChange={(v) => setSelectedRole(v)}
+                    options={companyRoleSelectOptions}
+                    getBadgeStyle={getCompanyRoleBadgeStyle}
+                  />
+                );
+              })()}
+            </div>
+            <Button
+              size="sm"
+              className="bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200"
+              onClick={handleAddMember}
+              disabled={isPending || !selectedUserId || availableUsers.length === 0}
+            >
+              Adicionar
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCancelAdd}
+              disabled={isPending}
+              className="text-muted-foreground hover:text-foreground cursor-pointer transition-all duration-200"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Tabela de membros */}
+      <motion.div
+        variants={itemVariants}
+        className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto"
+      >
+        {members.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Users className="size-10 mb-3 text-muted-foreground/60" />
+            <p className="text-sm">Nenhum membro nesta empresa</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground px-4 py-2">Nível</TableHead>
+                <TableHead className="text-muted-foreground px-4 py-2">Nome</TableHead>
+                <TableHead className="text-muted-foreground px-4 py-2">Email</TableHead>
+                <TableHead className="text-muted-foreground px-4 py-2">Papel</TableHead>
+                <TableHead className="text-muted-foreground text-right px-4 py-2">
+                  Ações
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((member) => (
+                <TableRow
+                  key={member.id}
+                  className="border-border/50 hover:bg-accent/30"
+                >
+                  <TableCell className="px-4 py-2">
+                    {(() => {
+                      const PLATFORM_ICONS: Record<string, React.ReactNode> = {
+                        super_admin: <Crown className="size-3" />,
+                        admin: <ShieldCheck className="size-3" />,
+                        manager: <Shield className="size-3" />,
+                        viewer: <Eye className="size-3" />,
+                      };
+                      const pl = PLATFORM_ROLE_STYLES[member.platformRole] || PLATFORM_ROLE_STYLES.viewer;
+                      return (
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium ${pl.className}`}>
+                          {PLATFORM_ICONS[member.platformRole] ?? <Eye className="size-3" />}
+                          {pl.label}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell className="text-foreground font-medium px-4 py-2">
+                    {member.userName}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground px-4 py-2">
+                    {member.userEmail}
+                  </TableCell>
+                  <TableCell className="px-4 py-2">
+                    {member.isSuperAdmin ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
+                        <Crown className="size-3" />
+                        Super Admin
+                      </span>
+                    ) : (
+                      <MemberBadgeSelect
+                        value={member.companyRole}
+                        onChange={(v) => {
+                          if (v !== member.companyRole) {
+                            handleRoleChange(member.id, v);
+                          }
+                        }}
+                        options={[
+                          { value: "company_admin", label: "Admin", description: "Gerencia a empresa", bg: "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400", icon: ShieldCheck },
+                          { value: "manager", label: "Gerente", description: "Gerencia notas e tomadores", bg: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400", icon: Shield },
+                          { value: "viewer", label: "Visualizador", description: "Apenas visualização", bg: "bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", icon: Eye },
+                        ]}
+                        getBadgeStyle={(val) => {
+                          switch (val) {
+                            case "company_admin": return { bg: "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400", icon: ShieldCheck };
+                            case "manager": return { bg: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400", icon: Shield };
+                            default: return { bg: "bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400", icon: Eye };
+                          }
+                        }}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right px-4 py-2">
+                    {!member.isSuperAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeletingMember(member)}
+                        disabled={isPending}
+                        className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 cursor-pointer transition-all duration-200"
+                        title="Remover membro"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </motion.div>
+
+      {/* Dialog de confirmação para remover membro */}
+      <AlertDialog
+        open={!!deletingMember}
+        onOpenChange={(open) => { if (!open) setDeletingMember(null); }}
+      >
+        <AlertDialogContent className="bg-card border border-border rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              Remover membro
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Tem certeza que deseja remover{" "}
+              <strong className="text-foreground">{deletingMember?.userName}</strong>{" "}
+              ({deletingMember?.userEmail}) desta empresa?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isPending}
+              className="border-border text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer transition-all duration-200"
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRemoveMember}
+              disabled={isPending}
+              className="bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all duration-200"
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </motion.div>
+  );
+}

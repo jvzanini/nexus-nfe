@@ -12,9 +12,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Loader2, Search, Filter, X, CircleHelp } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Loader2,
+  Search,
+  Filter,
+  X,
+  CircleHelp,
+  List,
+  Building2,
+  User,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { TutorialDialog } from "@/components/nfse/tutorial-dialog";
 import { toast } from "sonner";
 import { listarNfsesComFiltros, type NfseFilters, type NfseListItem } from "@/lib/actions/nfse";
@@ -103,6 +117,91 @@ function formatCurrency(value: string) {
   return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function groupNfses(items: NfseListItem[], by: "none" | "empresa" | "tomador") {
+  if (by === "none") return null;
+
+  const groups = new Map<string, NfseListItem[]>();
+  for (const item of items) {
+    const key = by === "empresa" ? item.clienteMeiRazaoSocial : item.tomadorNome;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+  return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function GroupSection({
+  name,
+  items,
+  router,
+  groupBy,
+}: {
+  name: string;
+  items: NfseListItem[];
+  router: ReturnType<typeof useRouter>;
+  groupBy: "empresa" | "tomador";
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors cursor-pointer"
+      >
+        {open ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        )}
+        <span className="font-medium text-foreground">{name}</span>
+        <Badge variant="secondary" className="text-xs">{items.length}</Badge>
+        <span className="ml-auto text-sm text-muted-foreground">
+          {formatCurrency(
+            items.reduce((sum, n) => sum + parseFloat(n.valorServico), 0).toString()
+          )}
+        </span>
+      </button>
+      {open && (
+        <div className="border-t border-border overflow-x-auto">
+          <Table>
+            <TableBody>
+              {items.map((n) => (
+                <TableRow
+                  key={n.id}
+                  className="border-border hover:bg-accent/30 cursor-pointer"
+                  onClick={() => router.push(`/nfse/${n.id}`)}
+                >
+                  <TableCell className="font-mono text-xs">{n.serie}-{n.numero}</TableCell>
+                  {groupBy !== "empresa" && (
+                    <TableCell className="font-medium">{n.clienteMeiRazaoSocial}</TableCell>
+                  )}
+                  <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground">
+                    {n.descricaoServico}
+                  </TableCell>
+                  {groupBy !== "tomador" && (
+                    <TableCell className="hidden lg:table-cell text-muted-foreground">
+                      {n.tomadorNome}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right font-medium">
+                    {formatCurrency(n.valorServico)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <StatusBadge status={n.status} />
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground hidden sm:table-cell">
+                    {format(new Date(n.dataEmissao), "dd/MM/yyyy", { locale: ptBR })}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NfseContent() {
   const [nfses, setNfses] = useState<NfseListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,6 +209,7 @@ export function NfseContent() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState<"none" | "empresa" | "tomador">("none");
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -146,6 +246,8 @@ export function NfseContent() {
           .some((field) => field?.toLowerCase().includes(filterSearch.toLowerCase()))
       )
     : nfses;
+
+  const grouped = groupNfses(filteredNfses, groupBy);
 
   return (
     <motion.div
@@ -196,13 +298,13 @@ export function NfseContent() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, CNPJ..."
+            placeholder="Buscar por empresa, tomador, número..."
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
             className="pl-9"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {["", "rascunho", "pendente", "processando", "autorizada", "rejeitada", "erro"].map((s) => (
             <button
               key={s}
@@ -217,16 +319,51 @@ export function NfseContent() {
             </button>
           ))}
         </div>
+        {/* Agrupamento */}
+        <div className="flex items-center gap-1 border border-border rounded-lg p-0.5">
+          <button
+            onClick={() => setGroupBy("none")}
+            className={`rounded px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+              groupBy === "none" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Lista simples"
+          >
+            <List className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setGroupBy("empresa")}
+            className={`rounded px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+              groupBy === "empresa" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Agrupar por empresa"
+          >
+            <Building2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setGroupBy("tomador")}
+            className={`rounded px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+              groupBy === "tomador" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Agrupar por tomador"
+          >
+            <User className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </motion.div>
 
-      {/* Table */}
-      <motion.div
-        variants={itemVariants}
-        className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto"
-      >
-        {loading ? (
+      {/* Conteúdo */}
+      {loading ? (
+        <motion.div
+          variants={itemVariants}
+          className="rounded-xl border border-border bg-card/50 overflow-hidden"
+        >
           <TableSkeleton />
-        ) : filteredNfses.length === 0 ? (
+        </motion.div>
+      ) : filteredNfses.length === 0 ? (
+        <motion.div
+          variants={itemVariants}
+          className="rounded-xl border border-border bg-card/50 overflow-hidden"
+        >
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <FileText className="h-12 w-12 mb-3 text-muted-foreground/60" />
             <p className="text-sm">Nenhuma nota fiscal encontrada</p>
@@ -240,7 +377,24 @@ export function NfseContent() {
               </Button>
             </Link>
           </div>
-        ) : (
+        </motion.div>
+      ) : grouped ? (
+        <motion.div variants={itemVariants} className="space-y-3">
+          {grouped.map(([name, items]) => (
+            <GroupSection
+              key={name}
+              name={name}
+              items={items}
+              router={router}
+              groupBy={groupBy as "empresa" | "tomador"}
+            />
+          ))}
+        </motion.div>
+      ) : (
+        <motion.div
+          variants={itemVariants}
+          className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto"
+        >
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
@@ -308,8 +462,8 @@ export function NfseContent() {
               ))}
             </TableBody>
           </Table>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
       <TutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </motion.div>
   );

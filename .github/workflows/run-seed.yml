@@ -11,71 +11,82 @@ jobs:
       PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
     steps:
       - name: Find app container and run seed
+        timeout-minutes: 3
         run: |
-          # Listar containers
-          CONTAINERS=$(curl --insecure -s \
+          # Listar todos os containers
+          echo "Listando containers..."
+          CONTAINERS=$(curl --insecure -s --max-time 30 \
             -H "X-API-Key: ${PORTAINER_TOKEN}" \
-            "${PORTAINER_URL}/api/endpoints/1/docker/containers/json")
+            "${PORTAINER_URL}/api/endpoints/1/docker/containers/json?all=true")
 
-          # Encontrar o container nexus-nfe_app
+          echo "Buscando container nexus-nfe..."
+          echo "$CONTAINERS" | python3 -c "
+          import sys,json
+          data = json.load(sys.stdin)
+          print(f'Total containers: {len(data)}')
+          for c in data:
+              names = c.get('Names', [])
+              image = c.get('Image', '')
+              state = c.get('State', '')
+              print(f'  {names} | {image} | {state}')
+          "
+
+          # Buscar por imagem nexus-nfe (mais confiável que nome)
           CONTAINER_ID=$(echo "$CONTAINERS" | python3 -c "
           import sys,json
           for c in json.load(sys.stdin):
-              for name in c.get('Names', []):
-                  if 'nexus-nfe_app' in name:
-                      print(c['Id'][:12]); break
+              img = c.get('Image', '')
+              state = c.get('State', '')
+              cmd = ' '.join(c.get('Command', '').split() if isinstance(c.get('Command'), str) else [])
+              if 'nexus-nfe' in img and state == 'running' and 'worker' not in cmd:
+                  print(c['Id'][:12]); break
           " 2>/dev/null)
 
-          echo "Container ID: $CONTAINER_ID"
+          echo "Container ID encontrado: '${CONTAINER_ID}'"
 
           if [ -z "$CONTAINER_ID" ]; then
-            echo "Container nexus-nfe_app não encontrado!"
-
-            echo "Containers disponíveis:"
-            echo "$CONTAINERS" | python3 -c "
-          import sys,json
-          for c in json.load(sys.stdin):
-              print(c.get('Names', []), c.get('State', ''))
-          "
+            echo "ERRO: Container nexus-nfe_app não encontrado rodando!"
             exit 1
           fi
 
-          # Criar exec para rodar migrate deploy
-          echo "Rodando prisma migrate deploy..."
-          EXEC_CREATE=$(curl --insecure -s -X POST \
+          # Rodar migrate
+          echo "=== Rodando prisma migrate deploy ==="
+          EXEC1=$(curl --insecure -s --max-time 10 -X POST \
             -H "X-API-Key: ${PORTAINER_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{"AttachStdout":true,"AttachStderr":true,"Cmd":["npx","prisma","migrate","deploy"]}' \
             "${PORTAINER_URL}/api/endpoints/1/docker/containers/${CONTAINER_ID}/exec")
+          EXEC_ID1=$(echo "$EXEC1" | python3 -c "import sys,json; print(json.load(sys.stdin).get('Id',''))" 2>/dev/null)
 
-          EXEC_ID=$(echo "$EXEC_CREATE" | python3 -c "import sys,json; print(json.load(sys.stdin)['Id'])" 2>/dev/null)
-
-          if [ -n "$EXEC_ID" ]; then
-            curl --insecure -s -X POST \
-              -H "X-API-Key: ${PORTAINER_TOKEN}" \
+          if [ -n "$EXEC_ID1" ]; then
+            curl --insecure -s --max-time 60 -X POST \
               -H "Content-Type: application/json" \
-              -d '{"Detach":false,"Tty":false}' \
-              "${PORTAINER_URL}/api/endpoints/1/docker/exec/${EXEC_ID}/start" || true
-            echo "Migrate executado"
+              -d '{"Detach":true}' \
+              "${PORTAINER_URL}/api/endpoints/1/docker/exec/${EXEC_ID1}/start" || true
+            echo "Migrate disparado (detached)"
+            sleep 10
+          else
+            echo "WARN: Não conseguiu criar exec para migrate"
           fi
 
-          # Criar exec para rodar seed
-          echo "Rodando seed..."
-          EXEC_CREATE2=$(curl --insecure -s -X POST \
+          # Rodar seed
+          echo "=== Rodando seed ==="
+          EXEC2=$(curl --insecure -s --max-time 10 -X POST \
             -H "X-API-Key: ${PORTAINER_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{"AttachStdout":true,"AttachStderr":true,"Cmd":["node","seed-prod.js"]}' \
             "${PORTAINER_URL}/api/endpoints/1/docker/containers/${CONTAINER_ID}/exec")
-
-          EXEC_ID2=$(echo "$EXEC_CREATE2" | python3 -c "import sys,json; print(json.load(sys.stdin)['Id'])" 2>/dev/null)
+          EXEC_ID2=$(echo "$EXEC2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('Id',''))" 2>/dev/null)
 
           if [ -n "$EXEC_ID2" ]; then
-            SEED_OUTPUT=$(curl --insecure -s -X POST \
-              -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            curl --insecure -s --max-time 30 -X POST \
               -H "Content-Type: application/json" \
-              -d '{"Detach":false,"Tty":false}' \
-              "${PORTAINER_URL}/api/endpoints/1/docker/exec/${EXEC_ID2}/start" 2>&1 || true)
-            echo "Seed output: $SEED_OUTPUT"
+              -d '{"Detach":true}' \
+              "${PORTAINER_URL}/api/endpoints/1/docker/exec/${EXEC_ID2}/start" || true
+            echo "Seed disparado (detached)"
+            sleep 5
+          else
+            echo "WARN: Não conseguiu criar exec para seed"
           fi
 
-          echo "Done!"
+          echo "=== Concluído ==="

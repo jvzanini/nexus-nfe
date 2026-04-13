@@ -1,5 +1,5 @@
 // App Config — Identidade centralizada da plataforma
-// Gerado automaticamente pelo Blueprint Nexus AI
+// Gerado automaticamente pelo Nexus Blueprint
 
 export const APP_CONFIG = {
   // === Identidade ===

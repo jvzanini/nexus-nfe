@@ -27,3 +27,22 @@ export const GET = withErrorHandler(async (
     valorIss: n.valorIss.toString(),
   });
 });
+
+/**
+ * DELETE /api/v1/nfse/{id} — Excluir rascunho de NFS-e
+ * Apenas NFS-e com status "rascunho" podem ser excluídas
+ */
+export const DELETE = withErrorHandler(async (
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  await requireApiKey(request);
+  const { id } = await params;
+
+  const nfse = await prisma.nfse.findUnique({ where: { id }, select: { id: true, status: true } });
+  if (!nfse) return apiError("NOT_FOUND", "NFS-e não encontrada", 404);
+  if (nfse.status !== "rascunho") return apiError("INVALID_STATUS", "Apenas rascunhos podem ser excluídos", 422);
+
+  await prisma.nfse.delete({ where: { id } });
+  return apiSuccess({ id, deleted: true });
+});

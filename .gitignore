@@ -50,3 +50,4 @@ docs/nfse/reference/*.xlsx
 docs/nfse/reference/*.zip
 docs/nfse/reference/fixtures/*.pfx
 src/lib/nfse/__tests__/fixtures/last-failed-*.xml
+node_modules.nosync

@@ -55,6 +55,13 @@ export async function checkLoginRateLimit(
   const keys = buildKeys(email, ip);
   const now = Date.now();
 
+  // Se Redis não estiver disponível, permite o login (fail-open)
+  try {
+    await redis.ping();
+  } catch {
+    return { allowed: true, remaining: 99, resetAt: new Date(now + 300_000) };
+  }
+
   // 1. Lockout ativo?
   const lockoutTtl = await redis.ttl(keys.lockout);
   if (lockoutTtl > 0) {

@@ -208,6 +208,165 @@ function highlightJson(json: string): ReactNode {
 }
 
 // ---------------------------------------------------------------------------
+// Code Syntax Highlighting (JS/Python/curl)
+// ---------------------------------------------------------------------------
+
+function highlightCode(code: string): ReactNode {
+  const lines = code.split("\n");
+
+  return lines.map((line, lineIdx) => {
+    const parts: ReactNode[] = [];
+    let remaining = line;
+    let keyIdx = 0;
+
+    while (remaining.length > 0) {
+      // Block comments /* ... */
+      const blockCommentMatch = remaining.match(/^(\/\*[\s\S]*?\*\/)/);
+      if (blockCommentMatch) {
+        parts.push(
+          <span key={`bc-${lineIdx}-${keyIdx++}`} className="text-zinc-600 italic">
+            {blockCommentMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(blockCommentMatch[1].length);
+        continue;
+      }
+
+      // Line comments //
+      const lineCommentMatch = remaining.match(/^(\/\/.*)/);
+      if (lineCommentMatch) {
+        parts.push(
+          <span key={`lc-${lineIdx}-${keyIdx++}`} className="text-zinc-600 italic">
+            {lineCommentMatch[1]}
+          </span>
+        );
+        remaining = "";
+        break;
+      }
+
+      // Python comments #
+      const pyCommentMatch = remaining.match(/^(#.*)/);
+      if (pyCommentMatch) {
+        parts.push(
+          <span key={`pc-${lineIdx}-${keyIdx++}`} className="text-zinc-600 italic">
+            {pyCommentMatch[1]}
+          </span>
+        );
+        remaining = "";
+        break;
+      }
+
+      // Leading whitespace
+      const wsMatch = remaining.match(/^(\s+)/);
+      if (wsMatch) {
+        parts.push(wsMatch[1]);
+        remaining = remaining.slice(wsMatch[1].length);
+        continue;
+      }
+
+      // Backtick strings (template literals)
+      const backtickMatch = remaining.match(/^(`(?:[^`\\]|\\.)*`)/);
+      if (backtickMatch) {
+        parts.push(
+          <span key={`bt-${lineIdx}-${keyIdx++}`} className="text-emerald-400">
+            {backtickMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(backtickMatch[1].length);
+        continue;
+      }
+
+      // Double-quoted strings
+      const dqMatch = remaining.match(/^("(?:[^"\\]|\\.)*")/);
+      if (dqMatch) {
+        parts.push(
+          <span key={`dq-${lineIdx}-${keyIdx++}`} className="text-emerald-400">
+            {dqMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(dqMatch[1].length);
+        continue;
+      }
+
+      // Single-quoted strings
+      const sqMatch = remaining.match(/^('(?:[^'\\]|\\.)*')/);
+      if (sqMatch) {
+        parts.push(
+          <span key={`sq-${lineIdx}-${keyIdx++}`} className="text-emerald-400">
+            {sqMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(sqMatch[1].length);
+        continue;
+      }
+
+      // Keywords
+      const kwMatch = remaining.match(
+        /^(const|let|var|async|await|function|return|if|else|for|while|try|catch|throw|new|import|from|export|class|extends|typeof|instanceof|in|of|yield|switch|case|break|continue|default|do|finally|void|delete|with|debugger)\b/
+      );
+      if (kwMatch) {
+        parts.push(
+          <span key={`kw-${lineIdx}-${keyIdx++}`} className="text-violet-400">
+            {kwMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(kwMatch[1].length);
+        continue;
+      }
+
+      // Python keywords
+      const pyKwMatch = remaining.match(
+        /^(import|from|def|class|return|if|elif|else|for|while|try|except|raise|with|as|pass|break|continue|and|or|not|is|in|None|True|False|lambda|yield|global|nonlocal|assert|del|print)\b/
+      );
+      if (pyKwMatch) {
+        parts.push(
+          <span key={`pk-${lineIdx}-${keyIdx++}`} className="text-violet-400">
+            {pyKwMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(pyKwMatch[1].length);
+        continue;
+      }
+
+      // Numbers
+      const numMatch = remaining.match(/^(-?\d+\.?\d*(?:[eE][+-]?\d+)?)\b/);
+      if (numMatch) {
+        parts.push(
+          <span key={`n-${lineIdx}-${keyIdx++}`} className="text-amber-400">
+            {numMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(numMatch[1].length);
+        continue;
+      }
+
+      // Brackets/braces/parens
+      const bracketMatch = remaining.match(/^([{}\[\](),:;])/);
+      if (bracketMatch) {
+        parts.push(
+          <span key={`br-${lineIdx}-${keyIdx++}`} className="text-zinc-500">
+            {bracketMatch[1]}
+          </span>
+        );
+        remaining = remaining.slice(1);
+        continue;
+      }
+
+      // Fallback: consume one char
+      parts.push(remaining[0]);
+      remaining = remaining.slice(1);
+    }
+
+    return (
+      <span key={`line-${lineIdx}`}>
+        {parts}
+        {lineIdx < lines.length - 1 ? "\n" : ""}
+      </span>
+    );
+  });
+}
+
+// ---------------------------------------------------------------------------
 // CodeBlock
 // ---------------------------------------------------------------------------
 
@@ -215,10 +374,12 @@ function CodeBlock({
   code,
   languages,
   highlight = false,
+  highlightAs,
 }: {
   code: Record<Language, string> | string;
   languages?: Language[];
   highlight?: boolean;
+  highlightAs?: "json" | "code";
 }) {
   const isMulti = typeof code !== "string";
   const langs = languages ?? (isMulti ? (Object.keys(code) as Language[]) : []);
@@ -233,6 +394,14 @@ function CodeBlock({
     toast.success("Copiado!");
     setTimeout(() => setCopied(false), 2000);
   }, [currentCode]);
+
+  const renderHighlighted = () => {
+    if (highlightAs === "code") return highlightCode(currentCode);
+    if (highlightAs === "json" || highlight) return highlightJson(currentCode);
+    // Auto-detect for multi-lang code blocks
+    if (isMulti) return highlightCode(currentCode);
+    return currentCode;
+  };
 
   return (
     <div className="group rounded-lg border border-border bg-zinc-950 overflow-hidden">
@@ -279,7 +448,7 @@ function CodeBlock({
         )}
         <pre className="overflow-x-auto p-4 text-[13px] leading-relaxed">
           <code className="font-mono text-zinc-300">
-            {highlight ? highlightJson(currentCode) : currentCode}
+            {renderHighlighted()}
           </code>
         </pre>
       </div>
@@ -496,7 +665,7 @@ const sections = [
   { id: "concepts", label: "Conceitos", icon: FileText },
   { id: "flow", label: "Fluxo de emissão", icon: Zap },
   { id: "section-nfse", label: "NFS-e", icon: Zap },
-  { id: "section-clientes", label: "Clientes MEI", icon: Globe },
+  { id: "section-empresas", label: "Empresas MEI", icon: Globe },
   { id: "section-usuarios", label: "Usuários", icon: Users },
   { id: "section-relatorios", label: "Relatórios", icon: BarChart3 },
   { id: "section-catalogo", label: "Catálogo", icon: BookOpen },
@@ -677,7 +846,7 @@ const endpointGroups: {
         title: "Enfileirar para emissão",
         description:
           "Envia o rascunho para a fila de emissão via gov.br. O processamento é assíncrono: o worker assina o XML com o certificado A1 do cliente, envia via mTLS e atualiza o status. Consulte o resultado via GET /nfse/{id}.",
-        tip: "O cliente MEI precisa ter um certificado A1 válido cadastrado. Caso contrário, a requisição retornará erro 422.",
+        tip: "A empresa MEI precisa ter um certificado A1 válido cadastrado. Caso contrário, a requisição retornará erro 422.",
         params: [
           {
             name: "id",
@@ -783,6 +952,37 @@ const endpointGroups: {
         ),
       },
       {
+        method: "DELETE",
+        path: "/nfse/{id}",
+        title: "Excluir rascunho",
+        description:
+          "Exclui permanentemente um rascunho de NFS-e. Apenas notas em status 'rascunho' podem ser excluídas. Notas em qualquer outro status (pendente, processando, autorizada, etc.) não podem ser removidas.",
+        tip: "Esta ação é irreversível. Use com cautela — se precisar apenas corrigir dados, edite o rascunho ao invés de excluí-lo.",
+        params: [
+          {
+            name: "id",
+            type: "string",
+            required: true,
+            description: "ID da NFS-e (deve estar em status 'rascunho')",
+          },
+        ],
+        examples: {
+          curl: curl("DELETE", "/nfse/clx2def..."),
+          javascript: js("DELETE", "/nfse/clx2def..."),
+          python: py("DELETE", "/nfse/clx2def..."),
+        },
+        response: JSON.stringify(
+          {
+            data: {
+              id: "clx2def...",
+              deleted: true,
+            },
+          },
+          null,
+          2
+        ),
+      },
+      {
         method: "GET",
         path: "/nfse/{id}/xml",
         title: "Download do XML",
@@ -811,16 +1011,16 @@ const endpointGroups: {
     ],
   },
   {
-    id: "section-clientes",
-    section: "Clientes MEI",
+    id: "section-empresas",
+    section: "Empresas MEI",
     icon: <Globe className="h-4 w-4 text-emerald-400" />,
     items: [
       {
         method: "GET",
-        path: "/clientes",
-        title: "Listar clientes MEI",
+        path: "/empresas",
+        title: "Listar empresas MEI",
         description:
-          "Retorna a lista paginada de clientes MEI cadastrados no tenant. Inclui status do certificado digital e indicação de atividade. Use para montar seletores de cliente em integrações.",
+          "Retorna a lista paginada de empresas MEI cadastradas no tenant. Inclui status do certificado digital e indicação de atividade. Use para montar seletores de empresa em integrações.",
         params: [
           { name: "page", type: "number", required: false, description: "Página (default: 1)" },
           {
@@ -831,9 +1031,9 @@ const endpointGroups: {
           },
         ],
         examples: {
-          curl: curl("GET", "/clientes?page=1&limit=20"),
-          javascript: js("GET", "/clientes?page=1&limit=20"),
-          python: py("GET", "/clientes?page=1&limit=20"),
+          curl: curl("GET", "/empresas?page=1&limit=20"),
+          javascript: js("GET", "/empresas?page=1&limit=20"),
+          python: py("GET", "/empresas?page=1&limit=20"),
         },
         response: JSON.stringify(
           {
@@ -855,10 +1055,10 @@ const endpointGroups: {
       },
       {
         method: "POST",
-        path: "/clientes",
-        title: "Cadastrar cliente MEI",
+        path: "/empresas",
+        title: "Cadastrar empresa MEI",
         description:
-          "Cadastra um novo cliente MEI na plataforma. Os dados são validados automaticamente via consulta à BrasilAPI (CNPJ, razão social, endereço). O certificado A1 pode ser enviado depois via upload na interface.",
+          "Cadastra uma nova empresa MEI na plataforma. Os dados são validados automaticamente via consulta à BrasilAPI (CNPJ, razão social, endereço). O certificado A1 pode ser enviado depois via upload na interface.",
         tip: "O CNPJ informado será consultado na BrasilAPI para preencher automaticamente razão social, nome fantasia e endereço. Informe apenas o CNPJ para aproveitar o auto-preenchimento.",
         body: JSON.stringify(
           {
@@ -874,17 +1074,17 @@ const endpointGroups: {
         examples: {
           curl: curl(
             "POST",
-            "/clientes",
+            "/empresas",
             '{"cnpj":"12345678000199","razaoSocial":"João Silva MEI","email":"joao@email.com"}'
           ),
           javascript: js(
             "POST",
-            "/clientes",
+            "/empresas",
             '{\n    cnpj: "12345678000199",\n    razaoSocial: "João Silva MEI",\n    email: "joao@email.com"\n  }'
           ),
           python: py(
             "POST",
-            "/clientes",
+            "/empresas",
             '{"cnpj": "12345678000199", "razaoSocial": "João Silva MEI", "email": "joao@email.com"}'
           ),
         },
@@ -905,17 +1105,17 @@ const endpointGroups: {
       },
       {
         method: "GET",
-        path: "/clientes/{id}",
-        title: "Detalhes do cliente",
+        path: "/empresas/{id}",
+        title: "Detalhes da empresa",
         description:
-          "Retorna os detalhes completos de um cliente MEI, incluindo status e validade do certificado digital A1, dados de faturamento anual acumulado e percentual do limite MEI (R$ 81.000).",
+          "Retorna os detalhes completos de uma empresa MEI, incluindo status e validade do certificado digital A1, dados de faturamento anual acumulado e percentual do limite MEI (R$ 81.000).",
         params: [
-          { name: "id", type: "string", required: true, description: "ID do cliente" },
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
         ],
         examples: {
-          curl: curl("GET", "/clientes/clx3ghi..."),
-          javascript: js("GET", "/clientes/clx3ghi..."),
-          python: py("GET", "/clientes/clx3ghi..."),
+          curl: curl("GET", "/empresas/clx3ghi..."),
+          javascript: js("GET", "/empresas/clx3ghi..."),
+          python: py("GET", "/empresas/clx3ghi..."),
         },
         response: JSON.stringify(
           {
@@ -945,14 +1145,93 @@ const endpointGroups: {
         ),
       },
       {
+        method: "PUT",
+        path: "/empresas/{id}",
+        title: "Atualizar dados da empresa",
+        description:
+          "Atualiza os dados cadastrais de uma empresa MEI. Campos não informados no body serão mantidos com os valores atuais. O CNPJ não pode ser alterado após o cadastro.",
+        tip: "Apenas campos enviados no body serão atualizados. Para alterar o e-mail de contato, por exemplo, envie apenas o campo email.",
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+        ],
+        body: JSON.stringify(
+          {
+            nomeFantasia: "JS Tech Soluções",
+            email: "novo@email.com",
+            telefone: "11988887777",
+          },
+          null,
+          2
+        ),
+        examples: {
+          curl: curl(
+            "PUT",
+            "/empresas/clx3ghi...",
+            '{"nomeFantasia":"JS Tech Soluções","email":"novo@email.com"}'
+          ),
+          javascript: js(
+            "PUT",
+            "/empresas/clx3ghi...",
+            '{\n    nomeFantasia: "JS Tech Soluções",\n    email: "novo@email.com"\n  }'
+          ),
+          python: py(
+            "PUT",
+            "/empresas/clx3ghi...",
+            '{"nomeFantasia": "JS Tech Soluções", "email": "novo@email.com"}'
+          ),
+        },
+        response: JSON.stringify(
+          {
+            data: {
+              id: "clx3ghi...",
+              cnpj: "12345678000199",
+              razaoSocial: "João Silva MEI",
+              nomeFantasia: "JS Tech Soluções",
+              email: "novo@email.com",
+              ativo: true,
+              updatedAt: "2026-04-12T11:00:00Z",
+            },
+          },
+          null,
+          2
+        ),
+      },
+      {
+        method: "DELETE",
+        path: "/empresas/{id}",
+        title: "Desativar empresa",
+        description:
+          "Desativa uma empresa MEI (soft delete). A empresa não será mais listada por padrão e não poderá emitir novas notas. Os dados históricos e notas já emitidas são preservados para fins fiscais.",
+        tip: "A desativação é reversível — entre em contato com o suporte para reativar uma empresa. Notas já emitidas continuam acessíveis.",
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+        ],
+        examples: {
+          curl: curl("DELETE", "/empresas/clx3ghi..."),
+          javascript: js("DELETE", "/empresas/clx3ghi..."),
+          python: py("DELETE", "/empresas/clx3ghi..."),
+        },
+        response: JSON.stringify(
+          {
+            data: {
+              id: "clx3ghi...",
+              ativo: false,
+              desativadoEm: "2026-04-12T12:00:00Z",
+            },
+          },
+          null,
+          2
+        ),
+      },
+      {
         method: "GET",
-        path: "/clientes/{id}/faturamento",
+        path: "/empresas/{id}/faturamento",
         title: "Faturamento anual",
         description:
-          "Retorna o faturamento acumulado do ano para o cliente MEI, com faixas graduais de alerta baseadas no limite anual de R$ 81.000. As faixas são: ok (\u226480%), atenção (80-100%), alerta (100-120%) e bloqueado (>120%).",
+          "Retorna o faturamento acumulado do ano para a empresa MEI, com faixas graduais de alerta baseadas no limite anual de R$ 81.000. As faixas são: ok (\u226480%), atenção (80-100%), alerta (100-120%) e bloqueado (>120%).",
         tip: "Monitore a faixa 'atenção' para alertar seus clientes antes que atinjam o limite. Acima de 120%, a emissão é bloqueada automaticamente pela plataforma.",
         params: [
-          { name: "id", type: "string", required: true, description: "ID do cliente" },
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
           {
             name: "ano",
             type: "number",
@@ -961,9 +1240,9 @@ const endpointGroups: {
           },
         ],
         examples: {
-          curl: curl("GET", "/clientes/clx3ghi.../faturamento?ano=2026"),
-          javascript: js("GET", "/clientes/clx3ghi.../faturamento?ano=2026"),
-          python: py("GET", "/clientes/clx3ghi.../faturamento?ano=2026"),
+          curl: curl("GET", "/empresas/clx3ghi.../faturamento?ano=2026"),
+          javascript: js("GET", "/empresas/clx3ghi.../faturamento?ano=2026"),
+          python: py("GET", "/empresas/clx3ghi.../faturamento?ano=2026"),
         },
         response: JSON.stringify(
           {
@@ -974,6 +1253,176 @@ const endpointGroups: {
               percentual: 55.56,
               faixa: "ok",
               descricao: "Faturamento dentro do limite (55.56%)",
+            },
+          },
+          null,
+          2
+        ),
+      },
+      {
+        method: "GET",
+        path: "/empresas/{id}/certificado",
+        title: "Consultar certificado digital",
+        description:
+          "Retorna informações sobre o certificado digital A1 da empresa MEI, incluindo validade, dias restantes, emissor e status. Não retorna a chave privada ou dados sensíveis do certificado.",
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+        ],
+        examples: {
+          curl: curl("GET", "/empresas/clx3ghi.../certificado"),
+          javascript: js("GET", "/empresas/clx3ghi.../certificado"),
+          python: py("GET", "/empresas/clx3ghi.../certificado"),
+        },
+        response: JSON.stringify(
+          {
+            data: {
+              valido: true,
+              serialNumber: "ABC123DEF456...",
+              emissor: "AC Certisign RFB G5",
+              validoAte: "2027-01-15T00:00:00Z",
+              diasRestantes: 278,
+              cnpj: "12345678000199",
+            },
+          },
+          null,
+          2
+        ),
+      },
+      {
+        method: "GET",
+        path: "/empresas/{id}/notas",
+        title: "Listar notas da empresa",
+        description:
+          "Retorna as notas fiscais emitidas por uma empresa MEI específica, com paginação e filtros por status. Atalho conveniente para GET /nfse filtrado por empresa.",
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+          { name: "page", type: "number", required: false, description: "Página (default: 1)" },
+          { name: "limit", type: "number", required: false, description: "Itens por página (default: 20)" },
+          { name: "status", type: "string", required: false, description: "Filtrar por status" },
+        ],
+        examples: {
+          curl: curl("GET", "/empresas/clx3ghi.../notas?page=1&limit=20"),
+          javascript: js("GET", "/empresas/clx3ghi.../notas?page=1&limit=20"),
+          python: py("GET", "/empresas/clx3ghi.../notas?page=1&limit=20"),
+        },
+        response: JSON.stringify(
+          {
+            data: [
+              {
+                id: "clx2def...",
+                numero: 12,
+                status: "autorizada",
+                tomadorNome: "Empresa XYZ Ltda",
+                valorServico: 1500.0,
+                createdAt: "2026-04-10T14:30:00Z",
+              },
+            ],
+            meta: { page: 1, limit: 20, total: 15 },
+          },
+          null,
+          2
+        ),
+      },
+      {
+        method: "GET",
+        path: "/empresas/{id}/tomadores",
+        title: "Listar tomadores da empresa",
+        description:
+          "Retorna os tomadores de serviço favoritos cadastrados para uma empresa MEI. Tomadores são salvos automaticamente após a emissão e podem ser reutilizados em novas notas para agilizar o preenchimento.",
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+        ],
+        examples: {
+          curl: curl("GET", "/empresas/clx3ghi.../tomadores"),
+          javascript: js("GET", "/empresas/clx3ghi.../tomadores"),
+          python: py("GET", "/empresas/clx3ghi.../tomadores"),
+        },
+        response: JSON.stringify(
+          {
+            data: [
+              {
+                id: "tom_abc...",
+                cpfCnpj: "12345678000199",
+                razaoSocial: "Empresa XYZ Ltda",
+                email: "contato@xyz.com",
+                usoCount: 5,
+                ultimoUso: "2026-04-10T14:30:00Z",
+              },
+            ],
+          },
+          null,
+          2
+        ),
+      },
+      {
+        method: "POST",
+        path: "/empresas/{id}/tomadores",
+        title: "Cadastrar tomador",
+        description:
+          "Cadastra manualmente um tomador de serviço favorito para uma empresa MEI. Útil para pré-cadastrar tomadores frequentes antes da primeira emissão.",
+        body: JSON.stringify(
+          {
+            cpfCnpj: "98765432000111",
+            razaoSocial: "Nova Empresa Ltda",
+            email: "contato@nova.com",
+          },
+          null,
+          2
+        ),
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+        ],
+        examples: {
+          curl: curl(
+            "POST",
+            "/empresas/clx3ghi.../tomadores",
+            '{"cpfCnpj":"98765432000111","razaoSocial":"Nova Empresa Ltda","email":"contato@nova.com"}'
+          ),
+          javascript: js(
+            "POST",
+            "/empresas/clx3ghi.../tomadores",
+            '{\n    cpfCnpj: "98765432000111",\n    razaoSocial: "Nova Empresa Ltda",\n    email: "contato@nova.com"\n  }'
+          ),
+          python: py(
+            "POST",
+            "/empresas/clx3ghi.../tomadores",
+            '{"cpfCnpj": "98765432000111", "razaoSocial": "Nova Empresa Ltda", "email": "contato@nova.com"}'
+          ),
+        },
+        response: JSON.stringify(
+          {
+            data: {
+              id: "tom_xyz...",
+              cpfCnpj: "98765432000111",
+              razaoSocial: "Nova Empresa Ltda",
+              email: "contato@nova.com",
+              createdAt: "2026-04-12T10:00:00Z",
+            },
+          },
+          null,
+          2
+        ),
+      },
+      {
+        method: "DELETE",
+        path: "/empresas/{id}/tomadores/{tomadorId}",
+        title: "Remover tomador",
+        description:
+          "Remove um tomador favorito da empresa MEI. Notas já emitidas para este tomador não são afetadas.",
+        params: [
+          { name: "id", type: "string", required: true, description: "ID da empresa" },
+          { name: "tomadorId", type: "string", required: true, description: "ID do tomador" },
+        ],
+        examples: {
+          curl: curl("DELETE", "/empresas/clx3ghi.../tomadores/tom_abc..."),
+          javascript: js("DELETE", "/empresas/clx3ghi.../tomadores/tom_abc..."),
+          python: py("DELETE", "/empresas/clx3ghi.../tomadores/tom_abc..."),
+        },
+        response: JSON.stringify(
+          {
+            data: {
+              id: "tom_abc...",
+              deleted: true,
             },
           },
           null,
@@ -1102,7 +1551,7 @@ const endpointGroups: {
             name: "clienteId",
             type: "string",
             required: false,
-            description: "Filtrar por cliente específico",
+            description: "Filtrar por empresa específica",
           },
         ],
         examples: {
@@ -1224,7 +1673,7 @@ const endpointGroups: {
               ambiente: "producao_restrita",
               notificacoesEmail: true,
               tenantNome: "Minha Contabilidade",
-              limiteReqMin: 60,
+              limiteReqMin: 200,
             },
           },
           null,
@@ -1340,14 +1789,21 @@ const errorCodes = [
 ];
 
 // ---------------------------------------------------------------------------
+// Scroll helpers
+// ---------------------------------------------------------------------------
+
+function scrollToSection(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const y = el.getBoundingClientRect().top + window.scrollY - 80;
+  window.scrollTo({ top: y, behavior: "smooth" });
+}
+
+// ---------------------------------------------------------------------------
 // SideNav
 // ---------------------------------------------------------------------------
 
 function SideNav({ activeSection }: { activeSection: string }) {
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
     <nav className="space-y-0.5">
       {sections.map((s) => {
@@ -1356,7 +1812,7 @@ function SideNav({ activeSection }: { activeSection: string }) {
         return (
           <button
             key={s.id}
-            onClick={() => scrollTo(s.id)}
+            onClick={() => scrollToSection(s.id)}
             className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
               isActive
                 ? "bg-violet-600/10 text-violet-400 font-medium"
@@ -1399,7 +1855,7 @@ const concepts = [
     title: "Certificado Digital A1",
     icon: <Lock className="h-4 w-4 text-sky-400" />,
     content:
-      "O certificado digital A1 (arquivo .pfx/.p12) é obrigatório para assinar o XML e autenticar via mTLS com o gov.br. Cada cliente MEI deve ter seu próprio certificado cadastrado na plataforma. A chave privada é armazenada cifrada com AES-256-GCM.",
+      "O certificado digital A1 (arquivo .pfx/.p12) é obrigatório para assinar o XML e autenticar via mTLS com o gov.br. Cada empresa MEI deve ter seu próprio certificado cadastrado na plataforma. A chave privada é armazenada cifrada com AES-256-GCM.",
   },
   {
     title: "Limite anual MEI (R$ 81.000)",
@@ -1426,7 +1882,10 @@ export function ApiDocsContent() {
           }
         }
       },
-      { rootMargin: "-20% 0px -60% 0px" }
+      {
+        rootMargin: "-80px 0px -60% 0px",
+        threshold: 0,
+      }
     );
 
     const sectionIds = sections.map((s) => s.id);
@@ -1438,14 +1897,10 @@ export function ApiDocsContent() {
     return () => observerRef.current?.disconnect();
   }, []);
 
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
     <div className="flex gap-8">
-      {/* Sticky side navigation */}
-      <div className="hidden xl:block w-56 shrink-0">
+      {/* Sticky side navigation — hidden on mobile/tablet */}
+      <div className="hidden lg:block w-56 shrink-0">
         <div className="sticky top-24 space-y-2">
           <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">
             Navegação
@@ -1474,7 +1929,7 @@ export function ApiDocsContent() {
                 API REST v1
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Integre a emissão de NFS-e diretamente no seu sistema com 17 endpoints
+                Integre a emissão de NFS-e diretamente no seu sistema com {endpointGroups.reduce((acc, g) => acc + g.items.length, 0)} endpoints
               </p>
             </div>
           </div>
@@ -1503,7 +1958,7 @@ export function ApiDocsContent() {
             {[
               { label: "Autenticação", id: "auth", icon: <Key className="h-3 w-3" /> },
               { label: "NFS-e", id: "section-nfse", icon: <Zap className="h-3 w-3" /> },
-              { label: "Clientes", id: "section-clientes", icon: <Globe className="h-3 w-3" /> },
+              { label: "Empresas", id: "section-empresas", icon: <Globe className="h-3 w-3" /> },
               { label: "Usuários", id: "section-usuarios", icon: <Users className="h-3 w-3" /> },
               { label: "Relatórios", id: "section-relatorios", icon: <BarChart3 className="h-3 w-3" /> },
               { label: "Catálogo", id: "section-catalogo", icon: <BookOpen className="h-3 w-3" /> },
@@ -1513,7 +1968,7 @@ export function ApiDocsContent() {
             ].map((link) => (
               <button
                 key={link.id}
-                onClick={() => scrollTo(link.id)}
+                onClick={() => scrollToSection(link.id)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/50 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-violet-500/30 hover:text-violet-400"
               >
                 {link.icon}
@@ -1586,6 +2041,7 @@ export function ApiDocsContent() {
             <CodeBlock
               code={`curl -H "X-API-Key: nxs_k1_abc123..." \\
   ${BASE}/nfse`}
+              highlightAs="code"
             />
 
             <Warning>
@@ -1832,7 +2288,8 @@ export function ApiDocsContent() {
                 Exemplo de polling em JavaScript
               </h4>
               <CodeBlock
-                code={`async function aguardarEmissao(nfseId) {
+                code={{
+                  javascript: `async function aguardarEmissao(nfseId) {
   const maxTentativas = 24; // 2 minutos (24 x 5s)
   for (let i = 0; i < maxTentativas; i++) {
     const res = await fetch(\`${BASE}/nfse/\${nfseId}\`, {
@@ -1846,7 +2303,9 @@ export function ApiDocsContent() {
     await new Promise(r => setTimeout(r, 5000)); // Aguarda 5s
   }
   throw new Error("Timeout: emissão não concluída em 2 minutos");
-}`}
+}`,
+                }}
+                languages={["javascript"]}
               />
             </div>
           </div>
@@ -2019,7 +2478,7 @@ export function ApiDocsContent() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-violet-600/10 border border-violet-500/20 px-2 py-0.5 text-xs font-mono text-violet-400">
-                        60 req/min
+                        200 req/min
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -2032,7 +2491,7 @@ export function ApiDocsContent() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-amber-600/10 border border-amber-500/20 px-2 py-0.5 text-xs font-mono text-amber-400">
-                        10 req/min
+                        30 req/min
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
@@ -2052,9 +2511,10 @@ export function ApiDocsContent() {
                 consumo atual:
               </p>
               <CodeBlock
-                code={`X-RateLimit-Limit: 60
-X-RateLimit-Remaining: 42
+                code={`X-RateLimit-Limit: 200
+X-RateLimit-Remaining: 182
 X-RateLimit-Reset: 1712930400`}
+                highlightAs="code"
               />
             </div>
 
@@ -2080,7 +2540,7 @@ X-RateLimit-Reset: 1712930400`}
             de 2026
           </p>
           <p className="text-[10px] text-zinc-600 mt-1">
-            17 endpoints &middot; REST + JSON &middot; Autenticação
+            {endpointGroups.reduce((acc, g) => acc + g.items.length, 0)} endpoints &middot; REST + JSON &middot; Autenticação
             por API Key
           </p>
         </motion.div>

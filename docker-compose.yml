@@ -21,6 +21,7 @@ services:
         - traefik.enable=true
         - traefik.http.routers.nexus-nfe.rule=Host(`nfe.nexusai360.com`)
         - traefik.http.routers.nexus-nfe.entrypoints=websecure
+        - traefik.http.routers.nexus-nfe.tls.certresolver=letsencryptresolver
         - traefik.http.services.nexus-nfe.loadbalancer.server.port=3000
 
   worker:

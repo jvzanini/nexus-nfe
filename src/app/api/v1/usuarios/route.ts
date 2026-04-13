@@ -50,7 +50,6 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       email: email.toLowerCase(),
       password: hashedPassword,
       platformRole: role,
-      emailVerified: new Date(),
     },
     select: { id: true, name: true, email: true, platformRole: true, createdAt: true },
   });

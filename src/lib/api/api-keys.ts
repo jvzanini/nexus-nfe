@@ -20,7 +20,7 @@ export async function createApiKey(name: string): Promise<ApiKeyInfo> {
   });
 
   const existing: ApiKeyInfo[] = setting?.value
-    ? JSON.parse(setting.value)
+    ? JSON.parse(String(setting.value))
     : [];
 
   existing.push(newKey);
@@ -44,7 +44,7 @@ export async function listApiKeys(): Promise<Array<{ name: string; keyPreview: s
 
   if (!setting?.value) return [];
 
-  const keys: ApiKeyInfo[] = JSON.parse(setting.value);
+  const keys: ApiKeyInfo[] = JSON.parse(String(setting.value));
   return keys.map((k) => ({
     name: k.name,
     keyPreview: k.key.slice(0, 10) + "..." + k.key.slice(-4),
@@ -62,7 +62,7 @@ export async function revokeApiKey(name: string): Promise<boolean> {
 
   if (!setting?.value) return false;
 
-  const keys: ApiKeyInfo[] = JSON.parse(setting.value);
+  const keys: ApiKeyInfo[] = JSON.parse(String(setting.value));
   const filtered = keys.filter((k) => k.name !== name);
 
   if (filtered.length === keys.length) return false;

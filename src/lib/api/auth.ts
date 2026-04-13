@@ -22,7 +22,7 @@ export async function validateApiKey(request: NextRequest): Promise<ApiKeyInfo |
 
     if (!setting?.value) return null;
 
-    const keys: ApiKeyInfo[] = JSON.parse(setting.value);
+    const keys: ApiKeyInfo[] = JSON.parse(String(setting.value));
     return keys.find((k) => k.key === apiKey) ?? null;
   } catch {
     return null;

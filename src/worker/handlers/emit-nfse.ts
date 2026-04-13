@@ -88,7 +88,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
           nome: nfse.tomadorNome,
           email: nfse.tomadorEmail ?? undefined,
           endereco: nfse.tomadorEndereco
-            ? { tipo: "nacional" as const, ...(nfse.tomadorEndereco as Record<string, string>) }
+            ? ({ tipo: "nacional", ...(nfse.tomadorEndereco as Record<string, string>) } as any)
             : undefined,
         },
         servico: {

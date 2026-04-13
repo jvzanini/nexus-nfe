@@ -1,7 +1,7 @@
 # Nexus NFE
 
 ## Projeto
-Emissão automatizada de notas fiscais para MEIs via GOV.BR
+Emissão automatizada de notas fiscais para empresas via GOV.BR
 
 **URL Produção:** https://nfe.nexusai360.com
 **Repositório:** https://github.com/jvzanini/nexus-nfe
@@ -22,6 +22,7 @@ Sempre responder em português brasileiro.
 ## Skills Obrigatórias
 - **superpowers:** Brainstorm, planejamento, desenvolvimento, testes, debugging
 - **ui-ux-pro-max:** OBRIGATÓRIO para TODO layout/UI — design system em `design-system/nexus-nfe/MASTER.md`
+- **Referência visual:** SEMPRE copiar 1:1 do Roteador Webhook (`/Users/joaovitorzanini/Developer/Claude Code/Roteador Webhook Meta/`)
 
 ## Convenções
 - Commits em português
@@ -34,13 +35,15 @@ Sempre responder em português brasileiro.
 - Next.js 15+ (App Router, Server Components, Server Actions)
 - TypeScript
 - Prisma 6 + PostgreSQL 16
-- Redis 7 + BullMQ (queue pattern)
+- Redis 7 + BullMQ (queue pattern, lazy loading)
 - NextAuth.js v5 (JWT stateless, trustHost: true)
 - Tailwind CSS v4 + shadcn/ui
 - next-themes — dark/light/system mode
 - Framer Motion
+- Recharts (gráficos do dashboard e visão geral)
 - Lucide React (ícones, nunca emojis)
 - Resend (email transacional)
+- jsPDF (geração de DANFS-e PDF)
 
 ## Identidade Visual
 - **Cor primária:** #7c3aed (violet Nexus)
@@ -55,124 +58,65 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
 ## Módulos Incluídos
 - **Core:** Auth, Users, Profile, Password Reset, Email
 - **audit-log:** Registro de ações para compliance fiscal
-- **encryption:** AES-256-GCM para credenciais GOV.BR dos clientes MEI
+- **encryption:** AES-256-GCM para certificados dos clientes
 - **notifications:** Feed + badge + contagem
 - **toast:** Sonner customizado
 
 ## Patterns Incluídos
-- **dashboard:** Stats, gráficos, filtros
+- **dashboard:** Stats reais, gráfico Recharts, filtros período, tabela de recentes
 - **settings:** Configurações globais key/value
-- **queue:** BullMQ worker pra processamento assíncrono de emissão NFE
+- **queue:** BullMQ worker pra processamento assíncrono (lazy loading)
 - **outbox:** Eventos transacionais confiáveis
+- **busca global:** Command palette ⌘K buscando em empresas, NFS-e, tomadores, usuários, API
 
-## Estado atual (2026-04-12)
+## Estado atual (2026-04-13)
 
-### Concluído
-- ✅ Fase 1 — Esqueleto (login, users, profile, dashboard, settings, sidebar com command palette funcional)
-- ✅ **Fase -1 — Spike Técnico NFS-e** (37 testes passando + sanity check end-to-end OK)
-  - Parser PKCS#12 (3DES e AES-256)
-  - Geração de idDps (45 chars)
-  - XML builder validado contra XSD oficial
-  - Assinatura XMLDSIG verificada por `xmlsec1`
-  - Empacotamento GZip+Base64
-  - Orquestrador `prepareSubmission`
-  - Endpoints SEFIN e ADN confirmados vivos (mTLS obrigatório)
-- ✅ **Fase 1A** — Cadastro MEI + Upload de certificado (BrasilAPI, criptografia AES-256-GCM, cron expiração)
-- ✅ **Fase 1B** — Catálogo NBS + Parâmetros Municipais + Numeração DPS
-  - Seed de ~580 códigos de tributação nacional (LC 116/2003) via parser XLSX
-  - Busca por código/descrição com autocomplete (componente NbsSelector)
-  - Wrapper de parâmetros municipais (mock, mTLS real na Fase 3)
-  - Numeração atômica de DPS (SELECT FOR UPDATE)
-- ✅ **Fase 2** — DPS Builder completo + Form de emissão (117 testes passando)
-  - Validador DPS com regras de negócio em português (27 testes)
-  - Testes XSD expandidos — tomador PJ, endereço, intermediário, substituição (8 testes)
-  - Schemas Zod para form de emissão (step-by-step)
-  - Server actions: criarRascunhoNfse, listarNfses, getNfse
-  - Form multi-step de emissão com 5 etapas (/nfse/nova)
-  - Página de listagem /nfse com badges de status
-- ✅ **Fase 3** — Transport mTLS + Pipeline de emissão (133 testes passando)
-  - Client mTLS (https.Agent com cert A1)
-  - SEFIN Client tipado (submitNfse, getNfse, headDps) com mock fetch nos testes
-  - Parser de resposta da API (sucesso/erro)
-  - Handler BullMQ de emissão (load cert → decrypt → build DPS → sign → pack → POST → update DB)
-  - Action emitirNfse com validação de certificado + enfileiramento
-  - Botão "Emitir NFS-e" funcional no form (aguarda cert A1 real para teste em homologação)
-- ✅ **Fase 4** — Consulta + Download + Reconciliação (133 testes passando)
-  - Página de detalhes /nfse/[id] com cards (cliente, serviço, tomador, valores, status/timeline)
-  - Download de XML assinado/autorizado
-  - Copiar chave de acesso para clipboard
-  - Filtros na listagem: por status (botões) + busca textual (cliente, tomador, número)
-  - Rows clicáveis navegando para detalhe
-  - Actions expandidas: getNfseDetail, downloadXmlNfse, listarNfsesComFiltros
-  - Job de reconciliação cron (a cada 5min verifica NFS-e em processando via HEAD /dps/{id})
+### Concluído — Todas as 8 fases + API REST + Ajustes UI (139 testes passando)
 
-- ✅ **Fase 5** — UX inteligente + memória + 1-clique (133 testes passando)
-  - Actions CRUD de serviços memorizados e tomadores favoritos (upsert, uso count, último uso)
-  - Sugestões de serviços recentes no step de serviço (auto-fill ao clicar)
-  - Sugestões de tomadores recentes no step de tomador (auto-fill ao clicar)
-  - Auto-save de serviço memorizado e tomador favorito após emissão (fire-and-forget)
-  - Botão "Emitir novamente" no detalhe da NFS-e (re-emissão com pre-fill)
-  - Atalho Ctrl+N / Cmd+N para nova NFS-e
-  - Pre-fill automático do form via query param ?reemitir={id}
+**Fases de implementação:**
+- ✅ Fase 1 — Esqueleto (login, users, profile, dashboard, settings, sidebar)
+- ✅ Fase -1 — Spike Técnico NFS-e (37 testes, XML + XMLDSIG + XSD)
+- ✅ Fase 1A — Cadastro empresas + Upload certificado A1
+- ✅ Fase 1B — Catálogo NBS (~580 códigos) + Parâmetros Municipais + Numeração DPS
+- ✅ Fase 2 — DPS Builder completo + Form multi-step de emissão
+- ✅ Fase 3 — Transport mTLS + Pipeline de emissão (build→sign→pack→POST)
+- ✅ Fase 4 — Consulta + Download XML/PDF + Reconciliação cron
+- ✅ Fase 5 — UX inteligente (memória, favoritos, re-emissão 1-clique, Ctrl+N)
+- ✅ Fase 6 — Regras MEI (limite R$81k, faixas graduais, bloqueio >120%)
+- ✅ Fase 7 — Cancelamento + Substituição + Export XMLs
+- ✅ Fase 8 — Observabilidade + Toggle de ambiente
 
-- ✅ **Fase 6** — Regras de negócio MEI (133 testes passando)
-  - Actions: getFaturamentoAno, atualizarFaturamentoPos, verificarLimiteAntesDeEmitir
-  - Faixas graduais: ok (≤80%), atenção (80-100%), alerta (100-120%), bloqueado (>120%)
-  - Banner visual de faturamento anual com barra de progresso colorida
-  - Verificação de limite no step de valores com avisos e bloqueio
-  - Bloqueio acima de 120% impede emissão (risco de desenquadramento retroativo)
+**API REST v1 (~26 endpoints):**
+- ✅ Auth por API Key (X-API-Key)
+- ✅ NFS-e: GET/POST/DELETE, emitir, cancelar, substituir, XML, PDF
+- ✅ Empresas: GET/POST/PUT/DELETE, tomadores CRUD, certificado, notas
+- ✅ Usuários: GET/POST
+- ✅ Relatórios: emissão por período
+- ✅ Catálogo NBS + Configurações
+- ✅ Documentação interativa em /api-docs
 
-- ✅ **Fase 7** — Cancelamento + substituição + export (133 testes passando)
-  - Action cancelarNfse com validação de prazo 24h
-  - Action substituirNfse cria rascunho com substitutaDe preenchido
-  - Action exportarXmlsPeriodo retorna XMLs autorizados de um período
-  - UI: dialog de cancelamento com motivo obrigatório
-  - UI: botão substituir cria rascunho e navega para detalhe
-  - Botões visíveis apenas para NFS-e autorizada
+**Ajustes UI (padrão Roteador Webhook):**
+- ✅ Cards de empresa 1:1 Roteador (glow hover, ícone, stats, chevron)
+- ✅ Detalhe com 5 tabs: Visão Geral, Certificado, Tomadores, Notas, Membros
+- ✅ Dialog Editar empresa (form + desativar/excluir)
+- ✅ Tab Membros com gestão de papéis (super_admin → viewer)
+- ✅ Dashboard com dados reais, filtros período, gráfico Recharts
+- ✅ CustomSelect padronizado em todos os filtros
+- ✅ Gráfico de emissões mensais na visão geral da empresa
+- ✅ Grupos empresariais de tomadores
+- ✅ Busca global ⌘K (empresas, NFS-e, tomadores, usuários, API)
+- ✅ Geração de PDF DANFS-e (jsPDF)
+- ✅ Tutorial/ajuda passo-a-passo
+- ✅ NBS Selector com navegação por teclado
+- ✅ Faturamento dinâmico no form
+- ✅ Ícones de ação alinhados (Eye, XML, PDF)
+- ✅ Performance: lazy loading Redis/Queue
 
-- ✅ **Fase 8** — Observabilidade + toggle de ambiente (139 testes passando)
-  - Logger estruturado (JSON) com sanitização de dados sensíveis (CNPJ mascarado, PFX/senha removidos)
-  - Wrapper `withTiming` para medir duração de operações
-  - Toggle de ambiente (produção restrita ↔ produção) via GlobalSettings, apenas super_admin
-  - Confirmação explícita para mudar para produção
-
-- ✅ **API REST v1** — Endpoints documentados para integração externa (139 testes passando)
-  - Auth por API Key (header X-API-Key) com CRUD de keys
-  - `GET/POST /api/v1/nfse` — listar com filtros/paginação + criar rascunho
-  - `GET /api/v1/nfse/{id}` — detalhes completos
-  - `POST /api/v1/nfse/{id}/emitir` — enfileirar para emissão
-  - `POST /api/v1/nfse/{id}/cancelar` — cancelar com motivo
-  - `GET /api/v1/nfse/{id}/xml` — download XML
-  - `GET /api/v1/clientes` — listar clientes MEI
-  - `GET /api/v1/clientes/{id}` — detalhes + certificado + faturamento
-  - `GET /api/v1/clientes/{id}/faturamento` — faturamento anual com faixas MEI
-  - `GET /api/v1/catalogo/nbs` — busca de códigos de tributação
-  - Fix do sefin-client para usar node:https nativo (mTLS real)
-  - Documentação completa em `docs/api/README.md`
-
-### Status: TODAS AS FASES CONCLUÍDAS + API REST
-O pipeline de emissão de NFS-e está 100% codificado (Fases -1 a 8).
-Para a primeira emissão real, faltam apenas os bloqueios externos:
+### Para emissão real em produção
 1. Certificado A1 ICP-Brasil (real ou de teste)
 2. Adesão gov.br nível Ouro ao Sistema Nacional NFS-e
 
-### Bloqueios externos pra Fase 3 (submit real)
-1. Adesão gov.br nível Ouro de CNPJ de teste ao Sistema Nacional NFS-e
-2. Certificado A1 ICP-Brasil (real ou de teste)
-
-### Decisão técnica: integração direta com gov.br/nfse (sem gateway pago)
-- Custo zero pra plataforma (API oficial é gratuita)
-- Cada MEI traz seu próprio certificado A1 (armazenado cifrado via módulo encryption)
-- Emissão síncrona via `POST /nfse`, reconciliação via `HEAD /dps/{id}`
-- DANFS-e PDF: fonte ainda a confirmar (provavelmente via ADN)
-- Endpoints:
-  - Homolog: `https://sefin.producaorestrita.nfse.gov.br/SefinNacional`
-  - Prod: `https://sefin.nfse.gov.br/SefinNacional`
-
-### Bug documentado no schema oficial
-`tiposSimples_v1.01.xsd` tem pattern `^0{0,4}\d{1,5}$` em TSSerieDPS, onde `^` e `$` são interpretados como literais em W3C XSD regex. Workaround: cópia patched em `docs/nfse/reference/schemas-patched/`. Ver `docs/nfse/reference/spike-findings.md`.
-
-## Código NFS-e (spike)
+## Código NFS-e
 Tudo em `src/lib/nfse/`:
 - `types.ts` — tipos alinhados ao XSD oficial v1.01
 - `constants.ts` — URLs homolog/prod + constantes MEI
@@ -183,21 +127,16 @@ Tudo em `src/lib/nfse/`:
 - `pack.ts` — GZip + Base64
 - `prepare-submission.ts` — orquestrador build+sign+pack
 - `nbs-parser.ts` — parser da planilha NBS (LC 116/2003)
-- `parametros-municipais.ts` — wrapper de parâmetros municipais (mock Fase 1B, real Fase 3)
-- `dps-validator.ts` — validador semântico pré-XML com erros em português
-- `mtls-client.ts` — cria https.Agent para mTLS com cert A1
-- `sefin-client.ts` — HTTP client tipado (submitNfse, getNfse, headDps)
+- `parametros-municipais.ts` — wrapper de parâmetros municipais
+- `dps-validator.ts` — validador semântico pré-XML
+- `mtls-client.ts` — https.Agent para mTLS
+- `sefin-client.ts` — HTTP client tipado (node:https nativo)
 - `response-parser.ts` — parser de resposta da API SEFIN
-- `logger.ts` — logger estruturado com sanitização de dados sensíveis
+- `pdf-generator.ts` — geração de DANFS-e PDF (jsPDF)
+- `logger.ts` — logger estruturado com sanitização
 - `__tests__/` — 17 arquivos, 139 testes
 
 Rodar os testes: `npm test`
-Rodar sanity check end-to-end: `npx tsx scripts/nfse-sanity-check.ts`
-
-## Regras
-- Todo serviço sobe como container Docker
-- Credenciais NUNCA no GitHub — apenas em `.env.production` local
-- Ir pelo caminho mais simples e direto
 
 ## Estrutura de Actions
 Todas as Server Actions ficam em `src/lib/actions/`:
@@ -205,15 +144,29 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `profile.ts` — Perfil do usuário logado
 - `password-reset.ts` — Fluxo de esqueci senha
 - `notifications.ts` — Marcar como lida, feed
-- `audit-log.ts` — Consulta e listagem (escrita é fire-and-forget)
+- `audit-log.ts` — Consulta e listagem
 - `settings.ts` — Leitura/escrita de configurações globais
-- `clientes-mei.ts` — CRUD de clientes MEI + consulta BrasilAPI
+- `clientes-mei.ts` — CRUD de empresas + consulta BrasilAPI
 - `certificados.ts` — Upload, validação e gestão de certificados A1
 - `nbs.ts` — Busca de códigos de tributação nacional
-- `parametros-municipais.ts` — Convênio e parâmetros de serviço por município
+- `parametros-municipais.ts` — Convênio e parâmetros por município
 - `dps-numeracao.ts` — Reserva de número sequencial de DPS
-- `nfse.ts` — Criar rascunho, listar, detalhar, emitir, download XML NFS-e
-- `servicos-memorizados.ts` — CRUD de serviços memorizados por cliente
-- `tomadores-favoritos.ts` — CRUD de tomadores favoritos por cliente
-- `mei-limite.ts` — Verificação e controle do limite anual MEI (R$81k)
-- `ambiente-nfse.ts` — Toggle de ambiente (homologação ↔ produção)
+- `nfse.ts` — CRUD NFS-e, emitir, cancelar, substituir, download XML/PDF, gráfico
+- `servicos-memorizados.ts` — CRUD de serviços memorizados
+- `tomadores-favoritos.ts` — CRUD de tomadores favoritos
+- `mei-limite.ts` — Verificação do limite anual MEI (R$81k)
+- `ambiente-nfse.ts` — Toggle de ambiente
+- `dashboard.ts` — Dados do dashboard (stats, gráfico, recentes)
+- `empresa-memberships.ts` — Gestão de membros por empresa
+- `grupos-empresariais.ts` — Grupos empresariais de tomadores
+
+## API REST v1
+Documentação completa em `/api-docs` (dentro da plataforma) e `docs/api/README.md`.
+Base: `/api/v1/` — Auth: header `X-API-Key`
+Rate limits: 200 req/min, 30 emissões/min
+
+## Regras
+- Todo serviço sobe como container Docker
+- Credenciais NUNCA no GitHub — apenas em `.env.production` local
+- Ir pelo caminho mais simples e direto
+- SEMPRE copiar UI 1:1 do Roteador Webhook

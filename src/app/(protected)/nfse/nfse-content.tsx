@@ -26,6 +26,7 @@ import {
   List,
   Building2,
   User,
+  Users,
   ChevronDown,
   ChevronRight,
   Eye,
@@ -120,12 +121,15 @@ function formatCurrency(value: string) {
   return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function groupNfses(items: NfseListItem[], by: "none" | "empresa" | "tomador") {
+function groupNfses(items: NfseListItem[], by: "none" | "empresa" | "tomador" | "grupo") {
   if (by === "none") return null;
 
   const groups = new Map<string, NfseListItem[]>();
   for (const item of items) {
-    const key = by === "empresa" ? item.clienteMeiRazaoSocial : item.tomadorNome;
+    let key: string;
+    if (by === "empresa") key = item.clienteMeiRazaoSocial;
+    else if (by === "tomador") key = item.tomadorNome;
+    else key = item.grupoEmpresarial || "Sem grupo";
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(item);
   }
@@ -141,7 +145,7 @@ function GroupSection({
   name: string;
   items: NfseListItem[];
   router: ReturnType<typeof useRouter>;
-  groupBy: "empresa" | "tomador";
+  groupBy: "empresa" | "tomador" | "grupo";
 }) {
   const [open, setOpen] = useState(false);
 
@@ -214,7 +218,7 @@ export function NfseContent() {
   const [filterSearch, setFilterSearch] = useState("");
   const [filterTomador, setFilterTomador] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [groupBy, setGroupBy] = useState<"none" | "empresa" | "tomador">("none");
+  const [groupBy, setGroupBy] = useState<"none" | "empresa" | "tomador" | "grupo">("none");
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -403,6 +407,15 @@ export function NfseContent() {
           >
             <User className="h-4 w-4" />
           </button>
+          <button
+            onClick={() => setGroupBy("grupo")}
+            className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+              groupBy === "grupo" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Agrupar por grupo empresarial"
+          >
+            <Users className="h-4 w-4" />
+          </button>
         </div>
       </motion.div>
 
@@ -441,7 +454,7 @@ export function NfseContent() {
               name={name}
               items={items}
               router={router}
-              groupBy={groupBy as "empresa" | "tomador"}
+              groupBy={groupBy as "empresa" | "tomador" | "grupo"}
             />
           ))}
         </motion.div>

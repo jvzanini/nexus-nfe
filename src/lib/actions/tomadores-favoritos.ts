@@ -18,6 +18,8 @@ export interface TomadorFavoritoItem {
   endereco: Record<string, string> | null;
   usoCount: number;
   ultimoUso: Date | null;
+  grupoId: string | null;
+  grupoNome: string | null;
 }
 
 /**
@@ -33,6 +35,7 @@ export async function listarTomadoresFavoritos(
       where: { clienteMeiId },
       orderBy: { ultimoUso: { sort: "desc", nulls: "last" } },
       take: 50,
+      include: { grupo: { select: { id: true, nome: true } } },
     });
 
     const data: TomadorFavoritoItem[] = tomadores.map((t) => ({
@@ -44,6 +47,8 @@ export async function listarTomadoresFavoritos(
       endereco: t.endereco as Record<string, string> | null,
       usoCount: t.usoCount,
       ultimoUso: t.ultimoUso,
+      grupoId: t.grupoId,
+      grupoNome: t.grupo?.nome ?? null,
     }));
 
     return { success: true, data };

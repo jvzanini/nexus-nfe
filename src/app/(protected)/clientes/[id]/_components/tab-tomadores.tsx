@@ -38,6 +38,12 @@ import {
   atualizarTomadorFavorito,
   type TomadorFavoritoItem,
 } from "@/lib/actions/tomadores-favoritos";
+import {
+  listarGrupos,
+  criarGrupo,
+  vincularTomadorAoGrupo,
+  type GrupoEmpresarialItem,
+} from "@/lib/actions/grupos-empresariais";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -75,6 +81,9 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  // Grupos empresariais
+  const [grupos, setGrupos] = useState<GrupoEmpresarialItem[]>([]);
+
   // Form novo tomador
   const [showForm, setShowForm] = useState(false);
   const [saving, startSaving] = useTransition();
@@ -82,17 +91,25 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
   const [formDoc, setFormDoc] = useState("");
   const [formNome, setFormNome] = useState("");
   const [formEmail, setFormEmail] = useState("");
+  const [formGrupoId, setFormGrupoId] = useState("");
 
   // Edit dialog
   const [editItem, setEditItem] = useState<TomadorFavoritoItem | null>(null);
   const [editNome, setEditNome] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editGrupoId, setEditGrupoId] = useState("");
   const [editSaving, startEditSaving] = useTransition();
 
   async function load() {
-    const result = await listarTomadoresFavoritos(empresaId);
-    if (result.success && result.data) {
-      setTomadores(result.data);
+    const [tomResult, grupoResult] = await Promise.all([
+      listarTomadoresFavoritos(empresaId),
+      listarGrupos(empresaId),
+    ]);
+    if (tomResult.success && tomResult.data) {
+      setTomadores(tomResult.data);
+    }
+    if (grupoResult.success && grupoResult.data) {
+      setGrupos(grupoResult.data);
     }
     setLoading(false);
   }
@@ -106,6 +123,7 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
     setFormDoc("");
     setFormNome("");
     setFormEmail("");
+    setFormGrupoId("");
     setShowForm(false);
   }
 
@@ -142,6 +160,9 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
         email: formEmail.trim() || undefined,
       });
       if (result.success) {
+        if (formGrupoId && result.data?.id) {
+          await vincularTomadorAoGrupo(result.data.id, formGrupoId);
+        }
         toast.success("Tomador salvo com sucesso");
         resetForm();
         await load();
@@ -169,6 +190,7 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
     setEditItem(t);
     setEditNome(t.nome);
     setEditEmail(t.email || "");
+    setEditGrupoId(t.grupoId || "");
   }
 
   function handleEditSave() {
@@ -183,6 +205,10 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
         email: editEmail.trim() || undefined,
       });
       if (result.success) {
+        const currentGrupoId = editItem.grupoId || "";
+        if (editGrupoId !== currentGrupoId) {
+          await vincularTomadorAoGrupo(editItem.id, editGrupoId || null);
+        }
         toast.success("Tomador atualizado");
         setEditItem(null);
         await load();
@@ -313,6 +339,25 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
             />
           </div>
 
+          {/* Grupo Empresarial */}
+          {grupos.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground/80">
+                Grupo Empresarial (opcional)
+              </Label>
+              <select
+                value={formGrupoId}
+                onChange={(e) => setFormGrupoId(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-border bg-muted/50 px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Nenhum grupo</option>
+                {grupos.map((g) => (
+                  <option key={g.id} value={g.id}>{g.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Acoes */}
           <div className="flex justify-end gap-2 pt-1">
             <Button
@@ -379,6 +424,7 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
                 <TableHead className="text-xs uppercase text-muted-foreground font-medium">Nome</TableHead>
                 <TableHead className="text-xs uppercase text-muted-foreground font-medium">Documento</TableHead>
                 <TableHead className="text-xs uppercase text-muted-foreground font-medium">E-mail</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium hidden lg:table-cell">Grupo</TableHead>
                 <TableHead className="text-xs uppercase text-muted-foreground font-medium text-center">Usos</TableHead>
                 <TableHead className="text-xs uppercase text-muted-foreground font-medium">Último uso</TableHead>
                 <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right">Ações</TableHead>
@@ -398,6 +444,9 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {t.email || "\u2014"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs hidden lg:table-cell">
+                    {t.grupoNome || "\u2014"}
                   </TableCell>
                   <TableCell className="text-center text-muted-foreground tabular-nums">
                     {t.usoCount}
@@ -456,6 +505,21 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
                 className="bg-muted/50 border-border text-foreground"
               />
             </div>
+            {grupos.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground/80">Grupo Empresarial</Label>
+                <select
+                  value={editGrupoId}
+                  onChange={(e) => setEditGrupoId(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-border bg-muted/50 px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Nenhum grupo</option>
+                  {grupos.map((g) => (
+                    <option key={g.id} value={g.id}>{g.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setEditItem(null)} disabled={editSaving} className="cursor-pointer">

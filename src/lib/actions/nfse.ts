@@ -27,6 +27,7 @@ export interface NfseListItem {
   dataEmissao: Date;
   dataCompetencia: Date;
   clienteMeiRazaoSocial: string;
+  grupoEmpresarial: string | null;
 }
 
 export interface NfseDetail extends NfseListItem {
@@ -161,6 +162,7 @@ export async function listarNfses(
       valorServico: n.valorServico.toString(),
       dataEmissao: n.dataEmissao, dataCompetencia: n.dataCompetencia,
       clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
+      grupoEmpresarial: null,
     }));
 
     return { success: true, data };
@@ -197,6 +199,7 @@ export async function getNfse(id: string): Promise<ActionResult<NfseListItem>> {
         valorServico: n.valorServico.toString(),
         dataEmissao: n.dataEmissao, dataCompetencia: n.dataCompetencia,
         clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
+        grupoEmpresarial: null,
       },
     };
   } catch (error) {
@@ -256,6 +259,7 @@ export async function getNfseDetail(id: string): Promise<ActionResult<NfseDetail
         createdAt: n.createdAt,
         updatedAt: n.updatedAt,
         clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
+        grupoEmpresarial: null,
       },
     };
   } catch (error) {
@@ -376,10 +380,21 @@ export async function listarNfsesComFiltros(
         id: true, idDps: true, serie: true, numero: true, status: true,
         descricaoServico: true, codigoServico: true, tomadorNome: true,
         tomadorDocumento: true, valorServico: true, dataEmissao: true,
-        dataCompetencia: true,
+        dataCompetencia: true, clienteMeiId: true,
         clienteMei: { select: { razaoSocial: true } },
       },
     });
+
+    // Buscar grupos empresariais dos tomadores para enriquecer a listagem
+    const clienteIds = [...new Set(nfses.map((n) => n.clienteMeiId))];
+    const tomadoresComGrupo = await prisma.tomadorFavorito.findMany({
+      where: { clienteMeiId: { in: clienteIds }, grupoId: { not: null } },
+      select: { clienteMeiId: true, documento: true, grupo: { select: { nome: true } } },
+    });
+    const grupoMap = new Map<string, string>();
+    for (const t of tomadoresComGrupo) {
+      grupoMap.set(`${t.clienteMeiId}:${t.documento}`, t.grupo?.nome ?? "");
+    }
 
     const data: NfseListItem[] = nfses.map((n) => ({
       id: n.id, idDps: n.idDps, serie: n.serie, numero: n.numero,
@@ -389,6 +404,7 @@ export async function listarNfsesComFiltros(
       valorServico: n.valorServico.toString(),
       dataEmissao: n.dataEmissao, dataCompetencia: n.dataCompetencia,
       clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
+      grupoEmpresarial: grupoMap.get(`${n.clienteMeiId}:${n.tomadorDocumento}`) || null,
     }));
 
     return { success: true, data };

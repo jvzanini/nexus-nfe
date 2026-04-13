@@ -244,6 +244,7 @@ model ClienteMei {
   tomadoresFavoritos  TomadorFavorito[]
   faturamentoAnual    FaturamentoAnual[]
   memberships         EmpresaMembership[]
+  gruposEmpresariais  GrupoEmpresarial[]
 
   @@map("clientes_mei")
 }
@@ -352,7 +353,9 @@ model TomadorFavorito {
   ultimoUso    DateTime? @map("ultimo_uso")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+  grupoId    String?           @map("grupo_id") @db.Uuid
+  clienteMei ClienteMei        @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+  grupo      GrupoEmpresarial? @relation(fields: [grupoId], references: [id], onDelete: SetNull)
 
   @@unique([clienteMeiId, documento])
   @@index([clienteMeiId, ultimoUso(sort: Desc)], name: "idx_tomador_recente")
@@ -404,4 +407,22 @@ model EmpresaMembership {
   @@unique([userId, clienteMeiId])
   @@index([clienteMeiId], name: "idx_membership_empresa")
   @@map("empresa_memberships")
+}
+
+// ============================================================
+// DOMÍNIO — Grupos Empresariais
+// ============================================================
+
+model GrupoEmpresarial {
+  id           String   @id @default(uuid()) @db.Uuid
+  clienteMeiId String   @map("cliente_mei_id") @db.Uuid
+  nome         String
+  descricao    String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  clienteMei ClienteMei       @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+  tomadores  TomadorFavorito[]
+
+  @@unique([clienteMeiId, nome])
+  @@map("grupos_empresariais")
 }

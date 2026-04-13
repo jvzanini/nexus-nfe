@@ -29,9 +29,16 @@ export async function GET() {
     });
 
     if (user) {
+      // Forçar reset da senha para garantir que funciona
+      const newHash = await bcrypt.hash(password, 10);
+      await prisma.user.update({
+        where: { email },
+        data: { password: newHash, name: "João Zanini" },
+      });
+
       return NextResponse.json({
         status: "ok",
-        message: "Admin já existe",
+        message: "Admin existe — senha resetada para a configurada em ADMIN_PASSWORD",
         user,
         tableCount,
       });

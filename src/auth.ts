@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { headers } from "next/headers";
 import { z } from "zod";
 
 import { authConfig } from "./auth.config";
@@ -11,11 +10,6 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
-/**
- * Configuração completa do NextAuth v5.
- * Roda no Node Runtime (usa Prisma + bcrypt). NÃO importar este arquivo
- * no middleware — use auth.config.ts lá.
- */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
@@ -29,14 +23,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const headersList = await headers();
-        const ip =
-          headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-          headersList.get("x-real-ip") ||
-          "0.0.0.0";
-
-        const user = await authorizeCredentials(parsed.data, ip);
-        return user;
+        try {
+          const user = await authorizeCredentials(parsed.data, "0.0.0.0");
+          return user;
+        } catch {
+          return null;
+        }
       },
     }),
   ],

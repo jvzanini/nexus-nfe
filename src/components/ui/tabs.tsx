@@ -60,7 +60,7 @@ export function TabsList({ className, children }: TabsListProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1",
+        "inline-flex items-center gap-1 rounded-lg bg-muted/50 border border-border p-1 overflow-x-auto",
         className
       )}
     >
@@ -84,10 +84,10 @@ export function TabsTrigger({ value, className, children }: TabsTriggerProps) {
       type="button"
       onClick={() => ctx.onValueChange(value)}
       className={cn(
-        "rounded-md px-4 py-2 text-sm transition-all duration-200 cursor-pointer text-muted-foreground",
-        isActive &&
-          "bg-violet-500/10 text-violet-400 border border-violet-500/30 shadow-none",
-        !isActive && "border border-transparent",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all cursor-pointer",
+        isActive
+          ? "bg-violet-500/5 text-violet-300 shadow-sm border border-violet-500/20"
+          : "text-muted-foreground hover:text-foreground border border-transparent",
         className
       )}
     >

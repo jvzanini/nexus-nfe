@@ -491,17 +491,17 @@ function py(method: HttpMethod, path: string, body?: string) {
 // ---------------------------------------------------------------------------
 
 const sections = [
-  { id: "intro", label: "In\u00edcio", icon: BookOpen },
-  { id: "auth", label: "Autentica\u00e7\u00e3o", icon: Key },
+  { id: "intro", label: "Início", icon: BookOpen },
+  { id: "auth", label: "Autenticação", icon: Key },
   { id: "concepts", label: "Conceitos", icon: FileText },
-  { id: "flow", label: "Fluxo de emiss\u00e3o", icon: Zap },
+  { id: "flow", label: "Fluxo de emissão", icon: Zap },
   { id: "section-nfse", label: "NFS-e", icon: Zap },
   { id: "section-clientes", label: "Clientes MEI", icon: Globe },
-  { id: "section-usuarios", label: "Usu\u00e1rios", icon: Users },
-  { id: "section-relatorios", label: "Relat\u00f3rios", icon: BarChart3 },
-  { id: "section-catalogo", label: "Cat\u00e1logo", icon: BookOpen },
-  { id: "section-configuracoes", label: "Configura\u00e7\u00f5es", icon: Settings },
-  { id: "errors", label: "C\u00f3digos de erro", icon: AlertTriangle },
+  { id: "section-usuarios", label: "Usuários", icon: Users },
+  { id: "section-relatorios", label: "Relatórios", icon: BarChart3 },
+  { id: "section-catalogo", label: "Catálogo", icon: BookOpen },
+  { id: "section-configuracoes", label: "Configurações", icon: Settings },
+  { id: "errors", label: "Códigos de erro", icon: AlertTriangle },
   { id: "rate-limits", label: "Rate limits", icon: Gauge },
 ];
 
@@ -525,15 +525,15 @@ const endpointGroups: {
         path: "/nfse",
         title: "Listar notas fiscais",
         description:
-          "Retorna uma lista paginada de notas fiscais do tenant autenticado. Suporta filtros por status, busca textual por nome do cliente ou tomador, e ordena\u00e7\u00e3o por data de cria\u00e7\u00e3o. Ideal para construir pain\u00e9is de acompanhamento e relat\u00f3rios customizados.",
-        tip: "Use o par\u00e2metro status para filtrar apenas notas autorizadas ao gerar relat\u00f3rios. Combine com q para buscas r\u00e1pidas por nome de cliente.",
+          "Retorna uma lista paginada de notas fiscais do tenant autenticado. Suporta filtros por status, busca textual por nome do cliente ou tomador, e ordenação por data de criação. Ideal para construir painéis de acompanhamento e relatórios customizados.",
+        tip: "Use o parâmetro status para filtrar apenas notas autorizadas ao gerar relatórios. Combine com q para buscas rápidas por nome de cliente.",
         params: [
-          { name: "page", type: "number", required: false, description: "P\u00e1gina (default: 1)" },
+          { name: "page", type: "number", required: false, description: "Página (default: 1)" },
           {
             name: "limit",
             type: "number",
             required: false,
-            description: "Itens por p\u00e1gina (default: 20, max: 100)",
+            description: "Itens por página (default: 20, max: 100)",
           },
           {
             name: "status",
@@ -546,7 +546,7 @@ const endpointGroups: {
             name: "q",
             type: "string",
             required: false,
-            description: "Busca por cliente, tomador ou n\u00famero",
+            description: "Busca por cliente, tomador ou número",
           },
         ],
         examples: {
@@ -561,7 +561,7 @@ const endpointGroups: {
                 id: "clx1abc...",
                 numero: 1,
                 status: "autorizada",
-                clienteNome: "Jo\u00e3o Silva MEI",
+                clienteNome: "João Silva MEI",
                 tomadorNome: "Empresa XYZ Ltda",
                 valorServico: 1500.0,
                 createdAt: "2026-04-10T14:30:00Z",
@@ -578,8 +578,8 @@ const endpointGroups: {
         path: "/nfse",
         title: "Criar rascunho",
         description:
-          "Cria um rascunho de NFS-e com numera\u00e7\u00e3o autom\u00e1tica de DPS. O rascunho pode ser editado livremente antes de ser enviado para emiss\u00e3o. A numera\u00e7\u00e3o sequencial \u00e9 reservada atomicamente no momento da cria\u00e7\u00e3o.",
-        tip: "O rascunho n\u00e3o tem validade \u2014 voc\u00ea pode cri\u00e1-lo agora e emitir depois. Aproveite para validar os dados com o cliente antes de prosseguir.",
+          "Cria um rascunho de NFS-e com numeração automática de DPS. O rascunho pode ser editado livremente antes de ser enviado para emissão. A numeração sequencial é reservada atomicamente no momento da criação.",
+        tip: "O rascunho não tem validade — você pode criá-lo agora e emitir depois. Aproveite para validar os dados com o cliente antes de prosseguir.",
         body: JSON.stringify(
           {
             clienteId: "clx1abc...",
@@ -634,8 +634,8 @@ const endpointGroups: {
         path: "/nfse/{id}",
         title: "Detalhes da nota",
         description:
-          "Retorna todos os detalhes de uma NFS-e espec\u00edfica, incluindo dados do tomador, servi\u00e7o, timeline de status e chave de acesso. Use este endpoint para polling ap\u00f3s enfileirar uma emiss\u00e3o.",
-        tip: "Ap\u00f3s chamar POST /nfse/{id}/emitir, fa\u00e7a polling neste endpoint a cada 5 segundos verificando o campo status at\u00e9 que ele mude para 'autorizada' ou 'rejeitada'.",
+          "Retorna todos os detalhes de uma NFS-e específica, incluindo dados do tomador, serviço, timeline de status e chave de acesso. Use este endpoint para polling após enfileirar uma emissão.",
+        tip: "Após chamar POST /nfse/{id}/emitir, faça polling neste endpoint a cada 5 segundos verificando o campo status até que ele mude para 'autorizada' ou 'rejeitada'.",
         params: [
           { name: "id", type: "string", required: true, description: "ID da NFS-e" },
         ],
@@ -652,7 +652,7 @@ const endpointGroups: {
               serie: "NFS",
               status: "autorizada",
               chaveAcesso: "NFSe123456789...",
-              clienteNome: "Jo\u00e3o Silva MEI",
+              clienteNome: "João Silva MEI",
               tomador: {
                 cpfCnpj: "12345678000199",
                 razaoSocial: "Empresa XYZ Ltda",
@@ -674,10 +674,10 @@ const endpointGroups: {
       {
         method: "POST",
         path: "/nfse/{id}/emitir",
-        title: "Enfileirar para emiss\u00e3o",
+        title: "Enfileirar para emissão",
         description:
-          "Envia o rascunho para a fila de emiss\u00e3o via gov.br. O processamento \u00e9 ass\u00edncrono: o worker assina o XML com o certificado A1 do cliente, envia via mTLS e atualiza o status. Consulte o resultado via GET /nfse/{id}.",
-        tip: "O cliente MEI precisa ter um certificado A1 v\u00e1lido cadastrado. Caso contr\u00e1rio, a requisi\u00e7\u00e3o retornar\u00e1 erro 422.",
+          "Envia o rascunho para a fila de emissão via gov.br. O processamento é assíncrono: o worker assina o XML com o certificado A1 do cliente, envia via mTLS e atualiza o status. Consulte o resultado via GET /nfse/{id}.",
+        tip: "O cliente MEI precisa ter um certificado A1 válido cadastrado. Caso contrário, a requisição retornará erro 422.",
         params: [
           {
             name: "id",
@@ -696,7 +696,7 @@ const endpointGroups: {
             data: {
               id: "clx2def...",
               status: "pendente",
-              message: "NFS-e enfileirada para emiss\u00e3o",
+              message: "NFS-e enfileirada para emissão",
             },
           },
           null,
@@ -708,8 +708,8 @@ const endpointGroups: {
         path: "/nfse/{id}/cancelar",
         title: "Cancelar nota",
         description:
-          "Cancela uma NFS-e autorizada junto \u00e0 SEFIN Nacional. O cancelamento s\u00f3 \u00e9 permitido dentro de 24 horas ap\u00f3s a emiss\u00e3o. Um motivo descritivo \u00e9 obrigat\u00f3rio e ser\u00e1 registrado no sistema nacional.",
-        tip: "Ap\u00f3s 24 horas, a \u00fanica op\u00e7\u00e3o \u00e9 a substitui\u00e7\u00e3o via POST /nfse/{id}/substituir. Planeje cancelamentos com anteced\u00eancia.",
+          "Cancela uma NFS-e autorizada junto à SEFIN Nacional. O cancelamento só é permitido dentro de 24 horas após a emissão. Um motivo descritivo é obrigatório e será registrado no sistema nacional.",
+        tip: "Após 24 horas, a única opção é a substituição via POST /nfse/{id}/substituir. Planeje cancelamentos com antecedência.",
         params: [
           {
             name: "id",
@@ -753,8 +753,8 @@ const endpointGroups: {
         path: "/nfse/{id}/substituir",
         title: "Criar nota substituta",
         description:
-          "Cria um novo rascunho de NFS-e como substitui\u00e7\u00e3o de uma nota autorizada. O rascunho \u00e9 pr\u00e9-preenchido com os dados da nota original e vinculado a ela pelo campo substitutaDe. Use quando o prazo de 24h para cancelamento j\u00e1 expirou.",
-        tip: "A nota original continua v\u00e1lida at\u00e9 que a substituta seja emitida e autorizada. Revise os dados do rascunho antes de emitir.",
+          "Cria um novo rascunho de NFS-e como substituição de uma nota autorizada. O rascunho é pré-preenchido com os dados da nota original e vinculado a ela pelo campo substitutaDe. Use quando o prazo de 24h para cancelamento já expirou.",
+        tip: "A nota original continua válida até que a substituta seja emitida e autorizada. Revise os dados do rascunho antes de emitir.",
         params: [
           {
             name: "id",
@@ -787,8 +787,8 @@ const endpointGroups: {
         path: "/nfse/{id}/xml",
         title: "Download do XML",
         description:
-          "Retorna o XML assinado e autorizado da NFS-e. Dispon\u00edvel apenas para notas com status autorizada ou cancelada. O conte\u00fado \u00e9 retornado com Content-Type application/xml.",
-        tip: "Armazene o XML localmente para fins de auditoria. A legisla\u00e7\u00e3o exige a guarda por no m\u00ednimo 5 anos.",
+          "Retorna o XML assinado e autorizado da NFS-e. Disponível apenas para notas com status autorizada ou cancelada. O conteúdo é retornado com Content-Type application/xml.",
+        tip: "Armazene o XML localmente para fins de auditoria. A legislação exige a guarda por no mínimo 5 anos.",
         params: [
           { name: "id", type: "string", required: true, description: "ID da NFS-e" },
         ],
@@ -820,14 +820,14 @@ const endpointGroups: {
         path: "/clientes",
         title: "Listar clientes MEI",
         description:
-          "Retorna a lista paginada de clientes MEI cadastrados no tenant. Inclui status do certificado digital e indica\u00e7\u00e3o de atividade. Use para montar seletores de cliente em integra\u00e7\u00f5es.",
+          "Retorna a lista paginada de clientes MEI cadastrados no tenant. Inclui status do certificado digital e indicação de atividade. Use para montar seletores de cliente em integrações.",
         params: [
-          { name: "page", type: "number", required: false, description: "P\u00e1gina (default: 1)" },
+          { name: "page", type: "number", required: false, description: "Página (default: 1)" },
           {
             name: "limit",
             type: "number",
             required: false,
-            description: "Itens por p\u00e1gina (default: 20)",
+            description: "Itens por página (default: 20)",
           },
         ],
         examples: {
@@ -841,7 +841,7 @@ const endpointGroups: {
               {
                 id: "clx3ghi...",
                 cnpj: "12345678000199",
-                razaoSocial: "Jo\u00e3o Silva MEI",
+                razaoSocial: "João Silva MEI",
                 nomeFantasia: "JS Tecnologia",
                 ativo: true,
                 certificadoValido: true,
@@ -858,12 +858,12 @@ const endpointGroups: {
         path: "/clientes",
         title: "Cadastrar cliente MEI",
         description:
-          "Cadastra um novo cliente MEI na plataforma. Os dados s\u00e3o validados automaticamente via consulta \u00e0 BrasilAPI (CNPJ, raz\u00e3o social, endere\u00e7o). O certificado A1 pode ser enviado depois via upload na interface.",
-        tip: "O CNPJ informado ser\u00e1 consultado na BrasilAPI para preencher automaticamente raz\u00e3o social, nome fantasia e endere\u00e7o. Informe apenas o CNPJ para aproveitar o auto-preenchimento.",
+          "Cadastra um novo cliente MEI na plataforma. Os dados são validados automaticamente via consulta à BrasilAPI (CNPJ, razão social, endereço). O certificado A1 pode ser enviado depois via upload na interface.",
+        tip: "O CNPJ informado será consultado na BrasilAPI para preencher automaticamente razão social, nome fantasia e endereço. Informe apenas o CNPJ para aproveitar o auto-preenchimento.",
         body: JSON.stringify(
           {
             cnpj: "12345678000199",
-            razaoSocial: "Jo\u00e3o Silva MEI",
+            razaoSocial: "João Silva MEI",
             nomeFantasia: "JS Tecnologia",
             email: "joao@email.com",
             telefone: "11999998888",
@@ -875,17 +875,17 @@ const endpointGroups: {
           curl: curl(
             "POST",
             "/clientes",
-            '{"cnpj":"12345678000199","razaoSocial":"Jo\u00e3o Silva MEI","email":"joao@email.com"}'
+            '{"cnpj":"12345678000199","razaoSocial":"João Silva MEI","email":"joao@email.com"}'
           ),
           javascript: js(
             "POST",
             "/clientes",
-            '{\n    cnpj: "12345678000199",\n    razaoSocial: "Jo\u00e3o Silva MEI",\n    email: "joao@email.com"\n  }'
+            '{\n    cnpj: "12345678000199",\n    razaoSocial: "João Silva MEI",\n    email: "joao@email.com"\n  }'
           ),
           python: py(
             "POST",
             "/clientes",
-            '{"cnpj": "12345678000199", "razaoSocial": "Jo\u00e3o Silva MEI", "email": "joao@email.com"}'
+            '{"cnpj": "12345678000199", "razaoSocial": "João Silva MEI", "email": "joao@email.com"}'
           ),
         },
         response: JSON.stringify(
@@ -893,7 +893,7 @@ const endpointGroups: {
             data: {
               id: "clx3ghi...",
               cnpj: "12345678000199",
-              razaoSocial: "Jo\u00e3o Silva MEI",
+              razaoSocial: "João Silva MEI",
               nomeFantasia: "JS Tecnologia",
               ativo: true,
               createdAt: "2026-04-12T10:00:00Z",
@@ -922,7 +922,7 @@ const endpointGroups: {
             data: {
               id: "clx3ghi...",
               cnpj: "12345678000199",
-              razaoSocial: "Jo\u00e3o Silva MEI",
+              razaoSocial: "João Silva MEI",
               nomeFantasia: "JS Tecnologia",
               email: "joao@email.com",
               ativo: true,
@@ -949,15 +949,15 @@ const endpointGroups: {
         path: "/clientes/{id}/faturamento",
         title: "Faturamento anual",
         description:
-          "Retorna o faturamento acumulado do ano para o cliente MEI, com faixas graduais de alerta baseadas no limite anual de R$ 81.000. As faixas s\u00e3o: ok (\u226480%), aten\u00e7\u00e3o (80-100%), alerta (100-120%) e bloqueado (>120%).",
-        tip: "Monitore a faixa 'aten\u00e7\u00e3o' para alertar seus clientes antes que atinjam o limite. Acima de 120%, a emiss\u00e3o \u00e9 bloqueada automaticamente pela plataforma.",
+          "Retorna o faturamento acumulado do ano para o cliente MEI, com faixas graduais de alerta baseadas no limite anual de R$ 81.000. As faixas são: ok (\u226480%), atenção (80-100%), alerta (100-120%) e bloqueado (>120%).",
+        tip: "Monitore a faixa 'atenção' para alertar seus clientes antes que atinjam o limite. Acima de 120%, a emissão é bloqueada automaticamente pela plataforma.",
         params: [
           { name: "id", type: "string", required: true, description: "ID do cliente" },
           {
             name: "ano",
             type: "number",
             required: false,
-            description: "Ano de refer\u00eancia (default: ano atual)",
+            description: "Ano de referência (default: ano atual)",
           },
         ],
         examples: {
@@ -984,22 +984,22 @@ const endpointGroups: {
   },
   {
     id: "section-usuarios",
-    section: "Usu\u00e1rios",
+    section: "Usuários",
     icon: <Users className="h-4 w-4 text-sky-400" />,
     items: [
       {
         method: "GET",
         path: "/usuarios",
-        title: "Listar usu\u00e1rios",
+        title: "Listar usuários",
         description:
-          "Retorna a lista de usu\u00e1rios cadastrados na plataforma com seus respectivos papeis (admin, operador). Apenas administradores podem acessar este endpoint.",
+          "Retorna a lista de usuários cadastrados na plataforma com seus respectivos papeis (admin, operador). Apenas administradores podem acessar este endpoint.",
         params: [
-          { name: "page", type: "number", required: false, description: "P\u00e1gina (default: 1)" },
+          { name: "page", type: "number", required: false, description: "Página (default: 1)" },
           {
             name: "limit",
             type: "number",
             required: false,
-            description: "Itens por p\u00e1gina (default: 20)",
+            description: "Itens por página (default: 20)",
           },
         ],
         examples: {
@@ -1027,10 +1027,10 @@ const endpointGroups: {
       {
         method: "POST",
         path: "/usuarios",
-        title: "Criar usu\u00e1rio",
+        title: "Criar usuário",
         description:
-          "Cria um novo usu\u00e1rio na plataforma. Um e-mail de boas-vindas com link para definir a senha ser\u00e1 enviado automaticamente. Apenas administradores podem criar usu\u00e1rios.",
-        tip: "O usu\u00e1rio receber\u00e1 um e-mail para definir sua senha. O link expira em 24 horas.",
+          "Cria um novo usuário na plataforma. Um e-mail de boas-vindas com link para definir a senha será enviado automaticamente. Apenas administradores podem criar usuários.",
+        tip: "O usuário receberá um e-mail para definir sua senha. O link expira em 24 horas.",
         body: JSON.stringify(
           {
             name: "Carlos Santos",
@@ -1075,22 +1075,22 @@ const endpointGroups: {
   },
   {
     id: "section-relatorios",
-    section: "Relat\u00f3rios",
+    section: "Relatórios",
     icon: <BarChart3 className="h-4 w-4 text-amber-400" />,
     items: [
       {
         method: "GET",
         path: "/relatorios/emissao",
-        title: "Relat\u00f3rio de emiss\u00f5es",
+        title: "Relatório de emissões",
         description:
-          "Retorna um relat\u00f3rio consolidado de emiss\u00f5es de NFS-e por per\u00edodo. Inclui totais por status, valor total emitido, quantidade de notas e distribui\u00e7\u00e3o por cliente. Ideal para dashboards e relat\u00f3rios gerenciais.",
-        tip: "O per\u00edodo m\u00e1ximo por consulta \u00e9 de 90 dias. Para per\u00edodos maiores, fa\u00e7a m\u00faltiplas requisi\u00e7\u00f5es.",
+          "Retorna um relatório consolidado de emissões de NFS-e por período. Inclui totais por status, valor total emitido, quantidade de notas e distribuição por cliente. Ideal para dashboards e relatórios gerenciais.",
+        tip: "O período máximo por consulta é de 90 dias. Para períodos maiores, faça múltiplas requisições.",
         params: [
           {
             name: "dataInicio",
             type: "string",
             required: true,
-            description: "Data de in\u00edcio (formato ISO: YYYY-MM-DD)",
+            description: "Data de início (formato ISO: YYYY-MM-DD)",
           },
           {
             name: "dataFim",
@@ -1102,7 +1102,7 @@ const endpointGroups: {
             name: "clienteId",
             type: "string",
             required: false,
-            description: "Filtrar por cliente espec\u00edfico",
+            description: "Filtrar por cliente específico",
           },
         ],
         examples: {
@@ -1135,7 +1135,7 @@ const endpointGroups: {
               porCliente: [
                 {
                   clienteId: "clx3ghi...",
-                  razaoSocial: "Jo\u00e3o Silva MEI",
+                  razaoSocial: "João Silva MEI",
                   quantidade: 45,
                   valorTotal: 67500.0,
                 },
@@ -1150,28 +1150,28 @@ const endpointGroups: {
   },
   {
     id: "section-catalogo",
-    section: "Cat\u00e1logo",
+    section: "Catálogo",
     icon: <BookOpen className="h-4 w-4 text-amber-400" />,
     items: [
       {
         method: "GET",
         path: "/catalogo/nbs",
-        title: "Buscar c\u00f3digos NBS",
+        title: "Buscar códigos NBS",
         description:
-          "Busca c\u00f3digos NBS (Nomenclatura Brasileira de Servi\u00e7os) da LC 116/2003 por c\u00f3digo ou descri\u00e7\u00e3o. O cat\u00e1logo cont\u00e9m aproximadamente 580 c\u00f3digos de tributa\u00e7\u00e3o com al\u00edquotas m\u00ednimas e m\u00e1ximas de ISS.",
-        tip: "Use este endpoint para construir campos de autocomplete no seu sistema. A busca \u00e9 case-insensitive e aceita buscas parciais.",
+          "Busca códigos NBS (Nomenclatura Brasileira de Serviços) da LC 116/2003 por código ou descrição. O catálogo contém aproximadamente 580 códigos de tributação com alíquotas mínimas e máximas de ISS.",
+        tip: "Use este endpoint para construir campos de autocomplete no seu sistema. A busca é case-insensitive e aceita buscas parciais.",
         params: [
           {
             name: "q",
             type: "string",
             required: true,
-            description: "Termo de busca (c\u00f3digo ou descri\u00e7\u00e3o)",
+            description: "Termo de busca (código ou descrição)",
           },
           {
             name: "limit",
             type: "number",
             required: false,
-            description: "M\u00e1x. resultados (default: 20)",
+            description: "Máx. resultados (default: 20)",
           },
         ],
         examples: {
@@ -1184,13 +1184,13 @@ const endpointGroups: {
             data: [
               {
                 codigo: "1.0101",
-                descricao: "An\u00e1lise e desenvolvimento de sistemas",
+                descricao: "Análise e desenvolvimento de sistemas",
                 aliquotaMinima: 2.0,
                 aliquotaMaxima: 5.0,
               },
               {
                 codigo: "1.0102",
-                descricao: "Programa\u00e7\u00e3o",
+                descricao: "Programação",
                 aliquotaMinima: 2.0,
                 aliquotaMaxima: 5.0,
               },
@@ -1204,15 +1204,15 @@ const endpointGroups: {
   },
   {
     id: "section-configuracoes",
-    section: "Configura\u00e7\u00f5es",
+    section: "Configurações",
     icon: <Settings className="h-4 w-4 text-zinc-400" />,
     items: [
       {
         method: "GET",
         path: "/configuracoes",
-        title: "Ler configura\u00e7\u00f5es",
+        title: "Ler configurações",
         description:
-          "Retorna as configura\u00e7\u00f5es globais da plataforma, incluindo ambiente de emiss\u00e3o (homologa\u00e7\u00e3o ou produ\u00e7\u00e3o), prefer\u00eancias de notifica\u00e7\u00e3o e dados do tenant.",
+          "Retorna as configurações globais da plataforma, incluindo ambiente de emissão (homologação ou produção), preferências de notificação e dados do tenant.",
         examples: {
           curl: curl("GET", "/configuracoes"),
           javascript: js("GET", "/configuracoes"),
@@ -1234,10 +1234,10 @@ const endpointGroups: {
       {
         method: "POST",
         path: "/configuracoes",
-        title: "Atualizar configura\u00e7\u00e3o",
+        title: "Atualizar configuração",
         description:
-          "Atualiza uma configura\u00e7\u00e3o espec\u00edfica da plataforma. Apenas administradores podem alterar configura\u00e7\u00f5es. A altera\u00e7\u00e3o de ambiente (homologa\u00e7\u00e3o para produ\u00e7\u00e3o) requer permiss\u00e3o super_admin.",
-        tip: "A mudan\u00e7a de ambiente para produ\u00e7\u00e3o \u00e9 irrevers\u00edvel via API. Tenha certeza absoluta antes de prosseguir.",
+          "Atualiza uma configuração específica da plataforma. Apenas administradores podem alterar configurações. A alteração de ambiente (homologação para produção) requer permissão super_admin.",
+        tip: "A mudança de ambiente para produção é irreversível via API. Tenha certeza absoluta antes de prosseguir.",
         body: JSON.stringify(
           {
             chave: "notificacoesEmail",
@@ -1288,53 +1288,53 @@ const errorCodes = [
     code: 400,
     name: "Bad Request",
     description:
-      "Corpo da requisi\u00e7\u00e3o inv\u00e1lido ou par\u00e2metros ausentes",
+      "Corpo da requisição inválido ou parâmetros ausentes",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   },
   {
     code: 401,
     name: "Unauthorized",
-    description: "API Key ausente ou inv\u00e1lida",
+    description: "API Key ausente ou inválida",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   },
   {
     code: 403,
     name: "Forbidden",
     description:
-      "Sem permiss\u00e3o para acessar este recurso (ex: operador tentando alterar configura\u00e7\u00f5es de admin)",
+      "Sem permissão para acessar este recurso (ex: operador tentando alterar configurações de admin)",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   },
   {
     code: 404,
     name: "Not Found",
-    description: "Recurso n\u00e3o encontrado",
+    description: "Recurso não encontrado",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-400",
   },
   {
     code: 409,
     name: "Conflict",
     description:
-      "Conflito de estado (ex: tentar emitir nota j\u00e1 emitida ou cancelar nota j\u00e1 cancelada)",
+      "Conflito de estado (ex: tentar emitir nota já emitida ou cancelar nota já cancelada)",
     color: "border-orange-500/30 bg-orange-500/10 text-orange-400",
   },
   {
     code: 422,
     name: "Unprocessable Entity",
     description:
-      "Dados v\u00e1lidos sintaticamente, mas regra de neg\u00f3cio impede a opera\u00e7\u00e3o (ex: certificado expirado, limite MEI ultrapassado)",
+      "Dados válidos sintaticamente, mas regra de negócio impede a operação (ex: certificado expirado, limite MEI ultrapassado)",
     color: "border-orange-500/30 bg-orange-500/10 text-orange-400",
   },
   {
     code: 429,
     name: "Too Many Requests",
     description:
-      "Limite de requisi\u00e7\u00f5es excedido \u2014 aguarde antes de tentar novamente",
+      "Limite de requisições excedido — aguarde antes de tentar novamente",
     color: "border-red-500/30 bg-red-500/10 text-red-400",
   },
   {
     code: 500,
     name: "Internal Server Error",
-    description: "Erro interno do servidor \u2014 tente novamente ou entre em contato com o suporte",
+    description: "Erro interno do servidor — tente novamente ou entre em contato com o suporte",
     color: "border-red-500/30 bg-red-500/10 text-red-400",
   },
 ];
@@ -1378,34 +1378,34 @@ function SideNav({ activeSection }: { activeSection: string }) {
 
 const concepts = [
   {
-    title: "O que \u00e9 NFS-e",
+    title: "O que é NFS-e",
     icon: <FileText className="h-4 w-4 text-violet-400" />,
     content:
-      "A Nota Fiscal de Servi\u00e7o Eletr\u00f4nica (NFS-e) \u00e9 o documento fiscal digital que registra a presta\u00e7\u00e3o de servi\u00e7os. Desde 2023, o Sistema Nacional NFS-e unifica a emiss\u00e3o em todo o Brasil atrav\u00e9s da API do gov.br, substituindo os sistemas municipais isolados.",
+      "A Nota Fiscal de Serviço Eletrônica (NFS-e) é o documento fiscal digital que registra a prestação de serviços. Desde 2023, o Sistema Nacional NFS-e unifica a emissão em todo o Brasil através da API do gov.br, substituindo os sistemas municipais isolados.",
   },
   {
-    title: "S\u00e9rie e n\u00famero do DPS",
+    title: "Série e número do DPS",
     icon: <Hash className="h-4 w-4 text-emerald-400" />,
     content:
-      "O DPS (Declara\u00e7\u00e3o de Presta\u00e7\u00e3o de Servi\u00e7os) \u00e9 o documento enviado ao gov.br para solicitar a emiss\u00e3o da NFS-e. Cada DPS tem uma s\u00e9rie (fixada em 'NFS') e um n\u00famero sequencial \u00fanico por emitente. A numera\u00e7\u00e3o \u00e9 reservada atomicamente pela plataforma.",
+      "O DPS (Declaração de Prestação de Serviços) é o documento enviado ao gov.br para solicitar a emissão da NFS-e. Cada DPS tem uma série (fixada em 'NFS') e um número sequencial único por emitente. A numeração é reservada atomicamente pela plataforma.",
   },
   {
-    title: "Homologa\u00e7\u00e3o vs Produ\u00e7\u00e3o",
+    title: "Homologação vs Produção",
     icon: <Server className="h-4 w-4 text-amber-400" />,
     content:
-      "O ambiente de homologa\u00e7\u00e3o (produ\u00e7\u00e3o restrita) permite testar a emiss\u00e3o sem efeito fiscal real. J\u00e1 o ambiente de produ\u00e7\u00e3o gera notas fiscais v\u00e1lidas. A plataforma come\u00e7a em homologa\u00e7\u00e3o por padr\u00e3o \u2014 a mudan\u00e7a para produ\u00e7\u00e3o requer confirma\u00e7\u00e3o expl\u00edcita.",
+      "O ambiente de homologação (produção restrita) permite testar a emissão sem efeito fiscal real. Já o ambiente de produção gera notas fiscais válidas. A plataforma começa em homologação por padrão — a mudança para produção requer confirmação explícita.",
   },
   {
     title: "Certificado Digital A1",
     icon: <Lock className="h-4 w-4 text-sky-400" />,
     content:
-      "O certificado digital A1 (arquivo .pfx/.p12) \u00e9 obrigat\u00f3rio para assinar o XML e autenticar via mTLS com o gov.br. Cada cliente MEI deve ter seu pr\u00f3prio certificado cadastrado na plataforma. A chave privada \u00e9 armazenada cifrada com AES-256-GCM.",
+      "O certificado digital A1 (arquivo .pfx/.p12) é obrigatório para assinar o XML e autenticar via mTLS com o gov.br. Cada cliente MEI deve ter seu próprio certificado cadastrado na plataforma. A chave privada é armazenada cifrada com AES-256-GCM.",
   },
   {
     title: "Limite anual MEI (R$ 81.000)",
     icon: <Gauge className="h-4 w-4 text-red-400" />,
     content:
-      "O MEI tem um limite de faturamento anual de R$ 81.000. A plataforma monitora automaticamente o faturamento acumulado e aplica faixas graduais: ok (\u226480%), aten\u00e7\u00e3o (80-100%), alerta (100-120%) e bloqueio (>120%). Acima de 120%, a emiss\u00e3o \u00e9 bloqueada.",
+      "O MEI tem um limite de faturamento anual de R$ 81.000. A plataforma monitora automaticamente o faturamento acumulado e aplica faixas graduais: ok (\u226480%), atenção (80-100%), alerta (100-120%) e bloqueio (>120%). Acima de 120%, a emissão é bloqueada.",
   },
 ];
 
@@ -1448,7 +1448,7 @@ export function ApiDocsContent() {
       <div className="hidden xl:block w-56 shrink-0">
         <div className="sticky top-24 space-y-2">
           <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-3">
-            Navega\u00e7\u00e3o
+            Navegação
           </p>
           <SideNav activeSection={activeSection} />
         </div>
@@ -1474,7 +1474,7 @@ export function ApiDocsContent() {
                 API REST v1
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Integre a emiss\u00e3o de NFS-e diretamente no seu sistema com 17 endpoints
+                Integre a emissão de NFS-e diretamente no seu sistema com 17 endpoints
               </p>
             </div>
           </div>
@@ -1501,13 +1501,13 @@ export function ApiDocsContent() {
           {/* Quick links */}
           <div className="flex flex-wrap gap-2">
             {[
-              { label: "Autentica\u00e7\u00e3o", id: "auth", icon: <Key className="h-3 w-3" /> },
+              { label: "Autenticação", id: "auth", icon: <Key className="h-3 w-3" /> },
               { label: "NFS-e", id: "section-nfse", icon: <Zap className="h-3 w-3" /> },
               { label: "Clientes", id: "section-clientes", icon: <Globe className="h-3 w-3" /> },
-              { label: "Usu\u00e1rios", id: "section-usuarios", icon: <Users className="h-3 w-3" /> },
-              { label: "Relat\u00f3rios", id: "section-relatorios", icon: <BarChart3 className="h-3 w-3" /> },
-              { label: "Cat\u00e1logo", id: "section-catalogo", icon: <BookOpen className="h-3 w-3" /> },
-              { label: "Configura\u00e7\u00f5es", id: "section-configuracoes", icon: <Settings className="h-3 w-3" /> },
+              { label: "Usuários", id: "section-usuarios", icon: <Users className="h-3 w-3" /> },
+              { label: "Relatórios", id: "section-relatorios", icon: <BarChart3 className="h-3 w-3" /> },
+              { label: "Catálogo", id: "section-catalogo", icon: <BookOpen className="h-3 w-3" /> },
+              { label: "Configurações", id: "section-configuracoes", icon: <Settings className="h-3 w-3" /> },
               { label: "Erros", id: "errors", icon: <AlertTriangle className="h-3 w-3" /> },
               { label: "Rate limits", id: "rate-limits", icon: <Gauge className="h-3 w-3" /> },
             ].map((link) => (
@@ -1532,22 +1532,22 @@ export function ApiDocsContent() {
           <div className="flex items-center gap-2">
             <Key className="h-5 w-5 text-amber-400" />
             <h2 className="text-xl font-semibold text-foreground">
-              Autentica\u00e7\u00e3o
+              Autenticação
             </h2>
           </div>
 
           <div className="rounded-xl border border-border bg-card/50 p-6 space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Todas as requisi\u00e7\u00f5es devem incluir o header{" "}
+              Todas as requisições devem incluir o header{" "}
               <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs font-mono text-violet-400">
                 X-API-Key
               </code>{" "}
-              com sua chave de API. Chaves s\u00e3o geradas na p\u00e1gina de{" "}
+              com sua chave de API. Chaves são geradas na página de{" "}
               <span className="text-foreground font-medium">
-                Configura\u00e7\u00f5es
+                Configurações
               </span>{" "}
-              da plataforma. Cada chave \u00e9 vinculada a um tenant e herda suas
-              permiss\u00f5es.
+              da plataforma. Cada chave é vinculada a um tenant e herda suas
+              permissões.
             </p>
 
             <div>
@@ -1558,12 +1558,12 @@ export function ApiDocsContent() {
                 <li>
                   Acesse{" "}
                   <span className="text-foreground font-medium">
-                    Configura\u00e7\u00f5es
+                    Configurações
                   </span>{" "}
                   no menu lateral
                 </li>
                 <li>
-                  Na se\u00e7\u00e3o{" "}
+                  Na seção{" "}
                   <span className="text-foreground font-medium">API Keys</span>,
                   clique em{" "}
                   <span className="text-foreground font-medium">
@@ -1571,14 +1571,14 @@ export function ApiDocsContent() {
                   </span>
                 </li>
                 <li>
-                  Copie a chave gerada \u2014 ela s\u00f3 ser\u00e1 exibida uma vez
+                  Copie a chave gerada — ela só será exibida uma vez
                 </li>
                 <li>
                   Adicione o header{" "}
                   <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs font-mono text-violet-400">
                     X-API-Key
                   </code>{" "}
-                  em todas as requisi\u00e7\u00f5es
+                  em todas as requisições
                 </li>
               </ol>
             </div>
@@ -1593,9 +1593,9 @@ export function ApiDocsContent() {
                 <span className="font-medium text-red-300">
                   Mantenha sua API Key em segredo.
                 </span>{" "}
-                Nunca exponha em c\u00f3digo client-side, reposit\u00f3rios p\u00fablicos ou
+                Nunca exponha em código client-side, repositórios públicos ou
                 logs. Caso uma chave seja comprometida, revogue-a imediatamente
-                nas Configura\u00e7\u00f5es e gere uma nova.
+                nas Configurações e gere uma nova.
               </p>
             </Warning>
           </div>
@@ -1613,7 +1613,7 @@ export function ApiDocsContent() {
           </div>
 
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Antes de integrar, \u00e9 importante entender alguns conceitos
+            Antes de integrar, é importante entender alguns conceitos
             fundamentais do ecossistema NFS-e e da plataforma.
           </p>
 
@@ -1661,7 +1661,7 @@ export function ApiDocsContent() {
               <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs font-mono text-red-400">
                 error
               </code>{" "}
-              com c\u00f3digo e mensagem descritiva.
+              com código e mensagem descritiva.
             </p>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -1691,11 +1691,11 @@ export function ApiDocsContent() {
                       error: {
                         code: "VALIDATION_ERROR",
                         message:
-                          "O campo 'tomador.cpfCnpj' \u00e9 obrigat\u00f3rio",
+                          "O campo 'tomador.cpfCnpj' é obrigatório",
                         details: [
                           {
                             field: "tomador.cpfCnpj",
-                            message: "Campo obrigat\u00f3rio",
+                            message: "Campo obrigatório",
                           },
                         ],
                       },
@@ -1717,7 +1717,7 @@ export function ApiDocsContent() {
               <code className="font-mono text-zinc-300">page</code>,{" "}
               <code className="font-mono text-zinc-300">limit</code> e{" "}
               <code className="font-mono text-zinc-300">total</code>. Use esses
-              valores para implementar navega\u00e7\u00e3o entre p\u00e1ginas.
+              valores para implementar navegação entre páginas.
             </Tip>
           </div>
         </motion.div>
@@ -1731,14 +1731,14 @@ export function ApiDocsContent() {
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-violet-400" />
             <h2 className="text-xl font-semibold text-foreground">
-              Fluxo de emiss\u00e3o
+              Fluxo de emissão
             </h2>
           </div>
 
           <div className="rounded-xl border border-border bg-card/50 p-6 space-y-6">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              O fluxo completo de emiss\u00e3o de NFS-e via API segue 5 etapas.
-              A emiss\u00e3o \u00e9 ass\u00edncrona \u2014 voc\u00ea enfileira o
+              O fluxo completo de emissão de NFS-e via API segue 5 etapas.
+              A emissão é assíncrona — você enfileira o
               pedido e consulta o resultado via polling.
             </p>
 
@@ -1760,7 +1760,7 @@ export function ApiDocsContent() {
                 {
                   step: "3",
                   title: "Worker processa",
-                  desc: "autom\u00e1tico",
+                  desc: "automático",
                   color: "amber" as const,
                 },
                 {
@@ -1818,7 +1818,7 @@ export function ApiDocsContent() {
 
             <Tip>
               <span className="font-medium text-amber-300">Polling:</span>{" "}
-              Ap\u00f3s enfileirar a emiss\u00e3o, o status muda de{" "}
+              Após enfileirar a emissão, o status muda de{" "}
               <code className="font-mono text-amber-300">pendente</code> para{" "}
               <code className="font-mono text-amber-300">processando</code> e
               depois para{" "}
@@ -1845,7 +1845,7 @@ export function ApiDocsContent() {
 
     await new Promise(r => setTimeout(r, 5000)); // Aguarda 5s
   }
-  throw new Error("Timeout: emiss\u00e3o n\u00e3o conclu\u00edda em 2 minutos");
+  throw new Error("Timeout: emissão não concluída em 2 minutos");
 }`}
               />
             </div>
@@ -1895,14 +1895,14 @@ export function ApiDocsContent() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-400" />
             <h2 className="text-xl font-semibold text-foreground">
-              C\u00f3digos de erro
+              Códigos de erro
             </h2>
           </div>
 
           <p className="text-sm text-muted-foreground leading-relaxed">
-            A API utiliza c\u00f3digos HTTP padr\u00e3o para indicar o resultado
-            da requisi\u00e7\u00e3o. Erros 4xx indicam problema na
-            requisi\u00e7\u00e3o do cliente, enquanto 5xx indicam falha no
+            A API utiliza códigos HTTP padrão para indicar o resultado
+            da requisição. Erros 4xx indicam problema na
+            requisição do cliente, enquanto 5xx indicam falha no
             servidor.
           </p>
 
@@ -1911,13 +1911,13 @@ export function ApiDocsContent() {
               <thead>
                 <tr className="border-b border-border bg-muted/30">
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">
-                    C\u00f3digo
+                    Código
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground w-44">
                     Nome
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Descri\u00e7\u00e3o
+                    Descrição
                   </th>
                 </tr>
               </thead>
@@ -1992,8 +1992,8 @@ export function ApiDocsContent() {
 
           <div className="rounded-xl border border-border bg-card/50 p-6 space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              A API aplica limites de requisi\u00e7\u00f5es por minuto para
-              garantir estabilidade e uso justo da plataforma. Os limites s\u00e3o
+              A API aplica limites de requisições por minuto para
+              garantir estabilidade e uso justo da plataforma. Os limites são
               aplicados por API Key.
             </p>
 
@@ -2015,7 +2015,7 @@ export function ApiDocsContent() {
                 <tbody>
                   <tr className="border-b border-border">
                     <td className="px-4 py-3 text-xs text-foreground font-medium">
-                      Padr\u00e3o
+                      Padrão
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-violet-600/10 border border-violet-500/20 px-2 py-0.5 text-xs font-mono text-violet-400">
@@ -2028,7 +2028,7 @@ export function ApiDocsContent() {
                   </tr>
                   <tr className="border-b border-border last:border-0">
                     <td className="px-4 py-3 text-xs text-foreground font-medium">
-                      Emiss\u00e3o (POST /nfse/*/emitir)
+                      Emissão (POST /nfse/*/emitir)
                     </td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-amber-600/10 border border-amber-500/20 px-2 py-0.5 text-xs font-mono text-amber-400">
@@ -2048,7 +2048,7 @@ export function ApiDocsContent() {
                 Headers de rate limit
               </h4>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                Toda resposta inclui headers com informa\u00e7\u00f5es sobre seu
+                Toda resposta inclui headers com informações sobre seu
                 consumo atual:
               </p>
               <CodeBlock
@@ -2064,7 +2064,7 @@ X-RateLimit-Reset: 1712930400`}
               aguarde o tempo indicado no header{" "}
               <code className="font-mono text-amber-300">X-RateLimit-Reset</code>{" "}
               (timestamp Unix) antes de retransmitir. Implemente backoff
-              exponencial para resili\u00eancia.
+              exponencial para resiliência.
             </Tip>
           </div>
         </motion.div>
@@ -2076,11 +2076,11 @@ X-RateLimit-Reset: 1712930400`}
         {/* --------------------------------------------------------------- */}
         <motion.div variants={itemVariants} className="text-center pt-4">
           <p className="text-xs text-muted-foreground">
-            Nexus NFE API v1 &mdash; Documenta\u00e7\u00e3o atualizada em abril
+            Nexus NFE API v1 &mdash; Documentação atualizada em abril
             de 2026
           </p>
           <p className="text-[10px] text-zinc-600 mt-1">
-            17 endpoints &middot; REST + JSON &middot; Autentica\u00e7\u00e3o
+            17 endpoints &middot; REST + JSON &middot; Autenticação
             por API Key
           </p>
         </motion.div>

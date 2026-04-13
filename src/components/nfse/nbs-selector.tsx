@@ -24,8 +24,16 @@ export function NbsSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || !listRef.current) return;
+    const item = listRef.current.children[highlightedIndex] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: "nearest" });
+  }, [highlightedIndex, isOpen]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -57,6 +65,7 @@ export function NbsSelector({
       if (res.success && res.data) {
         setResults(res.data);
         setIsOpen(res.data.length > 0);
+        setHighlightedIndex(0);
       }
       setIsLoading(false);
     }, 300);
@@ -102,6 +111,21 @@ export function NbsSelector({
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             onFocus={() => results.length > 0 && setIsOpen(true)}
+            onKeyDown={(e) => {
+              if (!isOpen || results.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setHighlightedIndex((prev) => (prev + 1) % results.length);
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setHighlightedIndex((prev) => (prev - 1 + results.length) % results.length);
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                handleSelect(results[highlightedIndex]);
+              } else if (e.key === "Escape") {
+                setIsOpen(false);
+              }
+            }}
             placeholder={placeholder}
             disabled={disabled}
             className="pl-9"
@@ -113,14 +137,14 @@ export function NbsSelector({
       )}
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
-          {results.map((item) => {
+        <div ref={listRef} className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+          {results.map((item, index) => {
             const aliq = formatAliquota(item);
             return (
               <button
                 key={item.codigo}
                 type="button"
-                className="flex w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                className={`flex w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-accent transition-colors ${index === highlightedIndex ? "bg-accent" : ""}`}
                 onClick={() => handleSelect(item)}
               >
                 <Badge

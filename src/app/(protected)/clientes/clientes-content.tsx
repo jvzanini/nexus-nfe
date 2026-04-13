@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileText,
+  ChevronRight,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
   listClientesMei,
@@ -148,7 +152,22 @@ function CardsSkeleton() {
   );
 }
 
-function CertBadge({
+function EmpresaStatusBadge({ isActive }: { isActive: boolean }) {
+  return (
+    <Badge
+      variant={isActive ? "default" : "secondary"}
+      className={
+        isActive
+          ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs"
+          : "bg-red-500/15 text-red-400 hover:bg-red-500/20 border border-red-500/30 text-xs"
+      }
+    >
+      {isActive ? "Ativa" : "Inativa"}
+    </Badge>
+  );
+}
+
+function CertStatus({
   valido,
   expiraEm,
 }: {
@@ -157,33 +176,33 @@ function CertBadge({
 }) {
   if (!expiraEm) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <span className="flex items-center gap-1.5">
         <ShieldOff className="h-3.5 w-3.5" />
-        Sem cert.
+        <span className="text-muted-foreground">Sem cert.</span>
       </span>
     );
   }
   const dias = differenceInDays(expiraEm, new Date());
   if (!valido || dias < 0) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+      <span className="flex items-center gap-1.5">
         <ShieldOff className="h-3.5 w-3.5" />
-        Expirado
+        <span className="text-red-400">Expirado</span>
       </span>
     );
   }
   if (dias <= 30) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+      <span className="flex items-center gap-1.5">
         <ShieldAlert className="h-3.5 w-3.5" />
-        Expira em {dias}d
+        <span className="text-amber-400">Expira em {dias}d</span>
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+    <span className="flex items-center gap-1.5">
       <ShieldCheck className="h-3.5 w-3.5" />
-      Cert. válido
+      <span className="text-emerald-500">Válido</span>
     </span>
   );
 }
@@ -197,15 +216,20 @@ function EmpresaCard({
   onEdit: (c: ClienteMeiListItem) => void;
   onDelete: (c: ClienteMeiListItem) => void;
 }) {
+  const router = useRouter();
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className="group relative rounded-xl border border-border bg-card/50 hover:bg-accent/30 transition-colors duration-200 overflow-hidden"
+    <Card
+      onClick={() => router.push(`/clientes/${cliente.id}`)}
+      className="bg-card border border-border hover:border-muted-foreground/30 transition-all duration-300 rounded-xl cursor-pointer group relative overflow-hidden"
     >
+      {/* Hover glow */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-violet-600/5 blur-2xl" />
+      </div>
+
       {/* Actions floating top-right */}
-      <div className="absolute top-3 right-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
         <Button
           variant="ghost"
           size="icon"
@@ -233,46 +257,48 @@ function EmpresaCard({
         </Button>
       </div>
 
-      <Link href={`/clientes/${cliente.id}`} className="block p-5">
-        {/* Header: icon + name + status */}
-        <div className="flex items-start gap-3 mb-1">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600/10 border border-violet-500/20">
-            <Building2 className="h-4 w-4 text-violet-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-foreground truncate">
+      <CardContent className="p-5 relative">
+        {/* Header: icon + nome + status */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-muted border border-border/50 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground transition-colors">
                 {cliente.razaoSocial}
               </h3>
-              {cliente.isActive ? (
-                <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                  Ativa
-                </span>
-              ) : (
-                <span className="shrink-0 inline-flex items-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  Inativa
-                </span>
-              )}
+              <p className="text-xs text-muted-foreground/60 font-mono">
+                {formatCnpj(cliente.cnpj)}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              {formatCnpj(cliente.cnpj)}
-            </p>
           </div>
+          <EmpresaStatusBadge isActive={cliente.isActive} />
         </div>
 
-        {/* Bottom row: stats */}
-        <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <FileText className="h-3.5 w-3.5" />
-            {cliente.totalNfses} nota{cliente.totalNfses !== 1 ? "s" : ""}
-          </span>
-          <CertBadge
-            valido={cliente.certificadoValido}
-            expiraEm={cliente.certificadoExpiraEm}
-          />
+        {/* Info row: Série + DPS */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/60 border border-border/40 mb-4">
+          <code className="text-[11px] text-muted-foreground truncate flex-1 font-mono">
+            Série: {cliente.serieDpsAtual} / DPS: {cliente.ultimoNumeroDps}
+          </code>
         </div>
-      </Link>
-    </motion.div>
+
+        {/* Stats row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <FileText className="h-3.5 w-3.5" />
+              {cliente.totalNfses} nota{cliente.totalNfses !== 1 ? "s" : ""}
+            </span>
+            <CertStatus
+              valido={cliente.certificadoValido}
+              expiraEm={cliente.certificadoExpiraEm}
+            />
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all duration-200" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

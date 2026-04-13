@@ -8,6 +8,7 @@ Emissão automatizada de notas fiscais para empresas via GOV.BR
 **Blueprint:** github.com/jvzanini/nexus-blueprint (v2.0.0)
 **Tipo:** Interno Nexus AI
 **Criado em:** 2026-04-10
+**Login Produção:** nexusai360@gmail.com / ***REMOVED-ADMIN-PASSWORD***
 
 ## Metodologia
 Este projeto segue a metodologia do Nexus Blueprint:
@@ -30,6 +31,7 @@ Sempre responder em português brasileiro.
 - Comentários em português quando necessário
 - Server Actions em `src/lib/actions/`
 - Todo texto visível ao usuário DEVE ter acentos e caracteres PT-BR corretos
+- NUNCA usar emojis — apenas ícones Lucide React
 
 ## Stack Técnica
 - Next.js 15+ (App Router, Server Components, Server Actions)
@@ -54,6 +56,26 @@ Sempre responder em português brasileiro.
 Portainer via GitHub Actions. Push pra `main` dispara build → push pro GHCR → update do stack `nexus-nfe` no Portainer.
 
 Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
+Rede: `rede_nexusAI` (externa, compartilhada com Traefik)
+Domínio: `nfe.nexusai360.com` (HTTPS via Traefik + Let's Encrypt)
+
+### Workflows CI/CD
+- `.github/workflows/build.yml` — Build, push GHCR, deploy via Portainer API
+- `.github/workflows/create-stack.yml` — Cria stack no Portainer (manual)
+- `.github/workflows/update-stack-env.yml` — Atualiza env vars da stack (manual)
+- `.github/workflows/run-seed.yml` — Roda migrations + seed no container (manual)
+
+### Env vars de produção (no Portainer)
+- `DB_PASSWORD`, `NEXTAUTH_SECRET`, `ENCRYPTION_KEY`
+- `RESEND_API_KEY=***REMOVED-RESEND-KEY***`
+- `ADMIN_EMAIL=nexusai360@gmail.com`, `ADMIN_PASSWORD=***REMOVED-ADMIN-PASSWORD***`
+
+### Entrypoint do container
+O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` antes do app iniciar. O `docker/seed-prod.js` cria o super admin se não existir.
+
+### Rotas temporárias (REMOVER após estabilizar)
+- `GET /api/setup` — Verifica banco e reseta senha do admin
+- `POST /api/debug-login` — Diagnóstico de autenticação
 
 ## Módulos Incluídos
 - **Core:** Auth, Users, Profile, Password Reset, Email
@@ -71,7 +93,9 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
 
 ## Estado atual (2026-04-13)
 
-### Concluído — Todas as 8 fases + API REST + Ajustes UI (139 testes passando)
+### Em produção — https://nfe.nexusai360.com
+
+**Todas as 8 fases implementadas + API REST + Ajustes UI (139 testes passando)**
 
 **Fases de implementação:**
 - ✅ Fase 1 — Esqueleto (login, users, profile, dashboard, settings, sidebar)
@@ -93,7 +117,7 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
 - ✅ Usuários: GET/POST
 - ✅ Relatórios: emissão por período
 - ✅ Catálogo NBS + Configurações
-- ✅ Documentação interativa em /api-docs
+- ✅ Documentação interativa em /api-docs (17+ endpoints com syntax highlighting)
 
 **Ajustes UI (padrão Roteador Webhook):**
 - ✅ Cards de empresa 1:1 Roteador (glow hover, ícone, stats, chevron)
@@ -111,6 +135,19 @@ Stack: `nexus-nfe_app` + `nexus-nfe_worker` + `nexus-nfe_db` + `nexus-nfe_redis`
 - ✅ Faturamento dinâmico no form
 - ✅ Ícones de ação alinhados (Eye, XML, PDF)
 - ✅ Performance: lazy loading Redis/Queue
+
+### Pendente — ajustes UI solicitados (spec em docs/superpowers/specs/2026-04-13-ajustes-ui-massivos.md)
+
+**Ainda não feito:**
+- Dashboard: comparar com referência Roteador (sininho notificação, filtro empresa)
+- Tabs da empresa: estilo ainda difere ligeiramente do Roteador (precisa ser menor/mais sutil)
+- Ícone da empresa no card/detalhe: usar o exato do Roteador
+- Tab Notas dentro da empresa: adicionar mesmos filtros da listagem principal
+- Tab Tomadores: filtro de busca com 3 recentes
+- Listagem NFS-e (sidebar): substituir botões de status por CustomSelect com cores
+- Agrupamento: destacar mais os botões
+- Coluna Ações: alinhar ícones em TODOS os cenários
+- Remover rotas temporárias (/api/setup, /api/debug-login)
 
 ### Para emissão real em produção
 1. Certificado A1 ICP-Brasil (real ou de teste)
@@ -165,8 +202,13 @@ Documentação completa em `/api-docs` (dentro da plataforma) e `docs/api/README
 Base: `/api/v1/` — Auth: header `X-API-Key`
 Rate limits: 200 req/min, 30 emissões/min
 
+## Bug conhecido corrigido
+- `await headers()` dentro do NextAuth `authorize` callback causa `error=Configuration` em produção. Removido — IP tracking desabilitado temporariamente.
+
 ## Regras
 - Todo serviço sobe como container Docker
-- Credenciais NUNCA no GitHub — apenas em `.env.production` local
+- Credenciais NUNCA no GitHub — apenas no Portainer (env vars)
 - Ir pelo caminho mais simples e direto
 - SEMPRE copiar UI 1:1 do Roteador Webhook
+- SEMPRE fazer 2 revisões profundas antes de entregar specs/planos
+- Após implementação: atualizar memória, docs, commits e deploy

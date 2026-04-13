@@ -56,8 +56,8 @@ jobs:
             {"name":"NEXTAUTH_SECRET","value":"***REMOVED-NEXTAUTH-SECRET***"},
             {"name":"ENCRYPTION_KEY","value":"***REMOVED-ENCRYPTION-KEY***"},
             {"name":"RESEND_API_KEY","value":"***REMOVED-RESEND-KEY***"},
-            {"name":"ADMIN_EMAIL","value":"admin@nexusai360.com"},
-            {"name":"ADMIN_PASSWORD","value":"iws34Zlmup0a"}
+            {"name":"ADMIN_EMAIL","value":"nexusai360@gmail.com"},
+            {"name":"ADMIN_PASSWORD","value":"***REMOVED-ADMIN-PASSWORD***"}
           ]'
 
           BODY=$(python3 -c "

@@ -14,26 +14,18 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     networks:
-      - rede_nexusAI
+      - traefik-public
       - internal
     deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
       labels:
         - traefik.enable=true
         - traefik.http.routers.nexus-nfe.rule=Host(`nfe.nexusai360.com`)
         - traefik.http.routers.nexus-nfe.entrypoints=websecure
-        - traefik.http.routers.nexus-nfe.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.nexus-nfe.service=nexus-nfe
         - traefik.http.services.nexus-nfe.loadbalancer.server.port=3000
-        - traefik.http.services.nexus-nfe.loadbalancer.passHostHeader=true
 
   worker:
     image: ghcr.io/jvzanini/nexus-nfe:latest
-    command: ["node", "worker/index.js"]
+    command: ["node", "worker-bundle.js"]
     environment:
       - DATABASE_URL=postgresql://nexus:${DB_PASSWORD}@db:5432/nexus_nfe
       - REDIS_URL=redis://redis:6379
@@ -66,8 +58,7 @@ volumes:
   redis_data:
 
 networks:
-  rede_nexusAI:
+  traefik-public:
     external: true
-    name: rede_nexusAI
   internal:
     driver: overlay

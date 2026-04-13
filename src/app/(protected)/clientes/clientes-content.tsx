@@ -668,7 +668,7 @@ export function ClientesContent() {
           className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200"
         >
           <Plus className="h-4 w-4" />
-          Nova Empresa
+          <span className="hidden sm:inline">Nova Empresa</span>
         </Button>
       </motion.div>
 

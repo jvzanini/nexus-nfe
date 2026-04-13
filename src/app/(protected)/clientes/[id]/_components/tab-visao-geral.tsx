@@ -55,7 +55,7 @@ function StatCard({
           <Icon className={`h-5 w-5 ${colors.text}`} />
         </div>
         <div>
-          <p className="text-2xl font-bold tabular-nums">{value}</p>
+          <p className="text-lg sm:text-2xl font-bold tabular-nums truncate">{value}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </div>

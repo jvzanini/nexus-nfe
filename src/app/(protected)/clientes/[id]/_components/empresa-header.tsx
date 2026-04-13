@@ -32,22 +32,22 @@ export function EmpresaHeader({ empresa, onEdit }: EmpresaHeaderProps) {
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-muted border border-border/50 flex items-center justify-center">
-            <Building2 className="w-7 h-7 text-muted-foreground" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-xl bg-muted border border-border/50 flex items-center justify-center">
+            <Building2 className="w-6 h-6 sm:w-7 sm:h-7 text-muted-foreground" />
           </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">
                 {empresa.razaoSocial}
               </h1>
               {empresa.isActive ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-medium">
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-medium">
                   Ativa
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                   Inativa
                 </span>
               )}
@@ -62,10 +62,10 @@ export function EmpresaHeader({ empresa, onEdit }: EmpresaHeaderProps) {
           variant="outline"
           size="sm"
           onClick={onEdit}
-          className="gap-2 cursor-pointer"
+          className="shrink-0 gap-2 cursor-pointer"
         >
           <Settings className="h-4 w-4" />
-          Editar
+          <span className="hidden sm:inline">Editar</span>
         </Button>
       </div>
     </div>

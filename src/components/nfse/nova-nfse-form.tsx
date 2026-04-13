@@ -153,7 +153,8 @@ export function NovaNfseForm() {
 
       {/* Step indicator */}
       <motion.div variants={itemVariants}>
-        <div className="flex items-center justify-between">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex items-center justify-between min-w-[320px]">
           {STEPS.map((step, idx) => {
             const isActive = currentStep === step.number;
             const isCompleted = currentStep > step.number;
@@ -161,7 +162,7 @@ export function NovaNfseForm() {
               <div key={step.number} className="flex items-center flex-1">
                 <div className="flex flex-col items-center gap-1.5 flex-1">
                   <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all duration-300 ${
+                    className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all duration-300 ${
                       isCompleted
                         ? "border-violet-500 bg-violet-600 text-white"
                         : isActive
@@ -176,7 +177,7 @@ export function NovaNfseForm() {
                     )}
                   </div>
                   <span
-                    className={`text-xs font-medium transition-colors ${
+                    className={`text-[10px] sm:text-xs font-medium transition-colors ${
                       isActive || isCompleted
                         ? "text-foreground"
                         : "text-muted-foreground"
@@ -187,7 +188,7 @@ export function NovaNfseForm() {
                 </div>
                 {idx < STEPS.length - 1 && (
                   <div
-                    className={`h-0.5 flex-1 mx-2 rounded-full transition-colors ${
+                    className={`h-0.5 flex-1 mx-1 sm:mx-2 rounded-full transition-colors ${
                       currentStep > step.number
                         ? "bg-violet-500"
                         : "bg-border"
@@ -198,12 +199,13 @@ export function NovaNfseForm() {
             );
           })}
         </div>
+        </div>
       </motion.div>
 
       {/* Step content */}
       <motion.div
         variants={itemVariants}
-        className="rounded-xl border border-border bg-card/50 p-6"
+        className="rounded-xl border border-border bg-card/50 p-4 sm:p-6"
       >
         {currentStep === 1 && (
           <StepCliente

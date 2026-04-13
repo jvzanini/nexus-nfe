@@ -528,7 +528,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                     Par&acirc;metros
                   </h4>
-                  <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="rounded-lg border border-border overflow-hidden overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border bg-muted/30">
@@ -2365,7 +2365,7 @@ export function ApiDocsContent() {
             servidor.
           </p>
 
-          <div className="rounded-xl border border-border bg-card/50 overflow-hidden">
+          <div className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
@@ -2456,7 +2456,7 @@ export function ApiDocsContent() {
               aplicados por API Key.
             </p>
 
-            <div className="rounded-lg border border-border overflow-hidden">
+            <div className="rounded-lg border border-border overflow-hidden overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">

@@ -287,15 +287,15 @@ export function NfseContent() {
           <Link href="/nfse/nova">
             <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200" title="Ctrl+N">
               <Plus className="h-4 w-4" />
-              Nova NFS-e
+              <span className="hidden sm:inline">Nova NFS-e</span>
             </Button>
           </Link>
         </div>
       </motion.div>
 
       {/* Filtros */}
-      <motion.div variants={itemVariants} className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <motion.div variants={itemVariants} className="flex items-start gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por empresa, tomador, número..."

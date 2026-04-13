@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -102,6 +102,34 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function ActionIconButton({
+  title,
+  onClick,
+  disabled = false,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+        disabled
+          ? "border-border/40 text-muted-foreground/30 cursor-not-allowed"
+          : "border-border text-muted-foreground hover:text-foreground hover:bg-accent/40 cursor-pointer"
+      }`}
+      title={title}
+      aria-label={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 function TableSkeleton() {
   return (
     <div className="space-y-3 p-6">
@@ -141,11 +169,15 @@ function GroupSection({
   items,
   router,
   groupBy,
+  onDownloadXml,
+  onDownloadPdf,
 }: {
   name: string;
   items: NfseListItem[];
   router: ReturnType<typeof useRouter>;
   groupBy: "empresa" | "tomador" | "grupo";
+  onDownloadXml: (id: string) => void;
+  onDownloadPdf: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -199,6 +231,30 @@ function GroupSection({
                   <TableCell className="text-right text-sm text-muted-foreground hidden sm:table-cell">
                     {format(new Date(n.dataEmissao), "dd/MM/yyyy", { locale: ptBR })}
                   </TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      <ActionIconButton
+                        title="Visualizar"
+                        onClick={() => router.push(`/nfse/${n.id}`)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </ActionIconButton>
+                      <ActionIconButton
+                        title="XML"
+                        onClick={() => onDownloadXml(n.id)}
+                        disabled={n.status !== "autorizada" && n.status !== "processando"}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </ActionIconButton>
+                      <ActionIconButton
+                        title="PDF"
+                        onClick={() => onDownloadPdf(n.id)}
+                        disabled={n.status !== "autorizada"}
+                      >
+                        <Download className="h-4 w-4" />
+                      </ActionIconButton>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -216,6 +272,7 @@ export function NfseContent() {
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
+  const [filterEmpresa, setFilterEmpresa] = useState("");
   const [filterTomador, setFilterTomador] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<"none" | "empresa" | "tomador" | "grupo">("none");
@@ -287,8 +344,17 @@ export function NfseContent() {
   }
 
   const uniqueTomadores = [...new Set(nfses.map((n) => n.tomadorNome))].sort();
+  const uniqueEmpresas = [...new Set(nfses.map((n) => n.clienteMeiRazaoSocial))].sort();
+  const tomadoresRecentes = Array.from(
+    new Set(
+      [...nfses]
+        .sort((a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime())
+        .map((n) => n.tomadorNome)
+    )
+  ).slice(0, 3);
 
   const filteredNfses = nfses.filter((n) => {
+    if (filterEmpresa && n.clienteMeiRazaoSocial !== filterEmpresa) return false;
     if (filterTomador && n.tomadorNome !== filterTomador) return false;
     if (filterSearch) {
       return [n.clienteMeiRazaoSocial, n.tomadorNome, n.tomadorDocumento, n.descricaoServico, `${n.serie}-${n.numero}`]
@@ -360,30 +426,71 @@ export function NfseContent() {
           triggerClassName="w-[180px]"
           options={[
             { value: "", label: "Todos os status" },
-            { value: "rascunho", label: "Rascunho" },
-            { value: "pendente", label: "Pendente" },
-            { value: "processando", label: "Processando" },
-            { value: "autorizada", label: "Autorizada" },
-            { value: "rejeitada", label: "Rejeitada" },
-            { value: "cancelada", label: "Cancelada" },
-            { value: "erro", label: "Erro" },
+            {
+              value: "rascunho",
+              label: "Rascunho",
+              icon: <span className="inline-flex rounded-full bg-zinc-500/20 px-2 py-0.5 text-[10px] text-zinc-400">Rascunho</span>,
+            },
+            {
+              value: "pendente",
+              label: "Pendente",
+              icon: <span className="inline-flex rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-400">Pendente</span>,
+            },
+            {
+              value: "processando",
+              label: "Processando",
+              icon: <span className="inline-flex rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] text-blue-400">Processando</span>,
+            },
+            {
+              value: "autorizada",
+              label: "Autorizada",
+              icon: <span className="inline-flex rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-400">Autorizada</span>,
+            },
+            {
+              value: "rejeitada",
+              label: "Rejeitada",
+              icon: <span className="inline-flex rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] text-red-400">Rejeitada</span>,
+            },
+            {
+              value: "cancelada",
+              label: "Cancelada",
+              icon: <span className="inline-flex rounded-full bg-zinc-500/20 px-2 py-0.5 text-[10px] text-zinc-400">Cancelada</span>,
+            },
+            {
+              value: "erro",
+              label: "Erro",
+              icon: <span className="inline-flex rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] text-red-400">Erro</span>,
+            },
+          ]}
+        />
+        <CustomSelect
+          value={filterEmpresa}
+          onChange={setFilterEmpresa}
+          triggerClassName="w-[220px]"
+          options={[
+            { value: "", label: "Todas as empresas" },
+            ...uniqueEmpresas.map((empresa) => ({ value: empresa, label: empresa })),
           ]}
         />
         <CustomSelect
           value={filterTomador}
           onChange={setFilterTomador}
-          triggerClassName="w-[200px]"
+          triggerClassName="w-[240px]"
           options={[
             { value: "", label: "Todos os tomadores" },
-            ...uniqueTomadores.map((t) => ({ value: t, label: t })),
+            ...uniqueTomadores.map((t) => ({
+              value: t,
+              label: t,
+              description: tomadoresRecentes.includes(t) ? "Recente" : undefined,
+            })),
           ]}
         />
         {/* Agrupamento */}
-        <div className="flex items-center gap-1 border border-border rounded-lg p-0.5">
+        <div className="flex items-center gap-1 rounded-xl border border-violet-500/20 bg-violet-500/5 p-1">
           <button
             onClick={() => setGroupBy("none")}
             className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
-              groupBy === "none" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+              groupBy === "none" ? "bg-violet-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
             }`}
             title="Lista simples"
           >
@@ -392,7 +499,7 @@ export function NfseContent() {
           <button
             onClick={() => setGroupBy("empresa")}
             className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
-              groupBy === "empresa" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+              groupBy === "empresa" ? "bg-violet-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
             }`}
             title="Agrupar por empresa"
           >
@@ -401,7 +508,7 @@ export function NfseContent() {
           <button
             onClick={() => setGroupBy("tomador")}
             className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
-              groupBy === "tomador" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+              groupBy === "tomador" ? "bg-violet-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
             }`}
             title="Agrupar por tomador"
           >
@@ -410,7 +517,7 @@ export function NfseContent() {
           <button
             onClick={() => setGroupBy("grupo")}
             className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
-              groupBy === "grupo" ? "bg-violet-600 text-white" : "text-muted-foreground hover:text-foreground"
+              groupBy === "grupo" ? "bg-violet-600 text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
             }`}
             title="Agrupar por grupo empresarial"
           >
@@ -455,6 +562,8 @@ export function NfseContent() {
               items={items}
               router={router}
               groupBy={groupBy as "empresa" | "tomador" | "grupo"}
+              onDownloadXml={handleDownloadXml}
+              onDownloadPdf={handleDownloadPdf}
             />
           ))}
         </motion.div>
@@ -531,37 +640,26 @@ export function NfseContent() {
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => router.push(`/nfse/${n.id}`)}
-                        className="cursor-pointer text-muted-foreground hover:text-foreground"
+                      <ActionIconButton
                         title="Visualizar"
+                        onClick={() => router.push(`/nfse/${n.id}`)}
                       >
                         <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadXml(n.id)}
-                        className={
-                          n.status === "autorizada" || n.status === "processando"
-                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
-                            : "text-zinc-800 cursor-not-allowed"
-                        }
+                      </ActionIconButton>
+                      <ActionIconButton
                         title="XML"
+                        onClick={() => handleDownloadXml(n.id)}
                         disabled={n.status !== "autorizada" && n.status !== "processando"}
                       >
                         <FileText className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadPdf(n.id)}
-                        className={
-                          n.status === "autorizada"
-                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
-                            : "text-zinc-800 cursor-not-allowed"
-                        }
+                      </ActionIconButton>
+                      <ActionIconButton
                         title="PDF"
+                        onClick={() => handleDownloadPdf(n.id)}
                         disabled={n.status !== "autorizada"}
                       >
                         <Download className="h-4 w-4" />
-                      </button>
+                      </ActionIconButton>
                     </div>
                   </TableCell>
                 </motion.tr>

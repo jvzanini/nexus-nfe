@@ -73,9 +73,8 @@ Domínio: `nfe.nexusai360.com` (HTTPS via Traefik + Let's Encrypt)
 ### Entrypoint do container
 O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` antes do app iniciar. O `docker/seed-prod.js` cria o super admin se não existir.
 
-### Rotas temporárias (REMOVER após estabilizar)
-- `GET /api/setup` — Verifica banco e reseta senha do admin
-- `POST /api/debug-login` — Diagnóstico de autenticação
+### Rotas temporárias
+- `/api/setup` e `/api/debug-login` removidas em 2026-04-13 após estabilização da autenticação.
 
 ## Módulos Incluídos
 - **Core:** Auth, Users, Profile, Password Reset, Email
@@ -139,15 +138,15 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 ### Pendente — ajustes UI solicitados (spec em docs/superpowers/specs/2026-04-13-ajustes-ui-massivos.md)
 
 **Ainda não feito:**
-- Dashboard: comparar com referência Roteador (sininho notificação, filtro empresa)
-- Tabs da empresa: estilo ainda difere ligeiramente do Roteador (precisa ser menor/mais sutil)
+- ✅ Dashboard alinhado com referência (sininho + filtro por empresa)
+- ✅ Tabs da empresa mais sutis (estilo ajustado)
 - Ícone da empresa no card/detalhe: usar o exato do Roteador
-- Tab Notas dentro da empresa: adicionar mesmos filtros da listagem principal
+- ✅ Tab Notas dentro da empresa com filtros/agrupamento da listagem principal
 - Tab Tomadores: filtro de busca com 3 recentes
-- Listagem NFS-e (sidebar): substituir botões de status por CustomSelect com cores
-- Agrupamento: destacar mais os botões
-- Coluna Ações: alinhar ícones em TODOS os cenários
-- Remover rotas temporárias (/api/setup, /api/debug-login)
+- ✅ Listagem NFS-e com status em CustomSelect colorido
+- ✅ Agrupamento com botões destacados
+- ✅ Coluna Ações alinhada em todos os cenários tratados
+- ✅ Rotas temporárias removidas (/api/setup, /api/debug-login)
 
 ### Para emissão real em produção
 1. Certificado A1 ICP-Brasil (real ou de teste)

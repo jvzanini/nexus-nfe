@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Eye, Download, FileText, Plus, Search } from "lucide-react";
+import { Eye, Download, FileText, Plus, Search, List, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -78,6 +78,30 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function ActionIconButton({
+  title,
+  onClick,
+  disabled = false,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-accent/40 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      title={title}
+      aria-label={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function TabNotas({ empresaId }: TabNotasProps) {
   const router = useRouter();
   const [nfses, setNfses] = useState<NfseListItem[]>([]);
@@ -85,6 +109,8 @@ export function TabNotas({ empresaId }: TabNotasProps) {
   const [downloading, startDownloading] = useTransition();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterTomador, setFilterTomador] = useState("");
+  const [groupBy, setGroupBy] = useState<"none" | "tomador">("none");
 
   useEffect(() => {
     listarNfses(empresaId).then((result) => {
@@ -132,15 +158,38 @@ export function TabNotas({ empresaId }: TabNotasProps) {
     });
   }
 
+  const uniqueTomadores = [...new Set(nfses.map((n) => n.tomadorNome))].sort();
+  const tomadoresRecentes = Array.from(
+    new Set(
+      [...nfses]
+        .sort((a, b) => new Date(b.dataEmissao).getTime() - new Date(a.dataEmissao).getTime())
+        .map((n) => n.tomadorNome)
+    )
+  ).slice(0, 3);
+
   const filtered = nfses.filter((n) => {
     if (filterStatus && n.status !== filterStatus) return false;
+    if (filterTomador && n.tomadorNome !== filterTomador) return false;
     if (search) {
       const q = search.toLowerCase();
-      return [n.tomadorNome, n.descricaoServico, `${n.serie}-${n.numero}`]
-        .some((f) => f?.toLowerCase().includes(q));
+      return [n.tomadorNome, n.descricaoServico, `${n.serie}-${n.numero}`].some((f) =>
+        f?.toLowerCase().includes(q)
+      );
     }
     return true;
   });
+
+  const groupedByTomador =
+    groupBy === "tomador"
+      ? Array.from(
+          filtered.reduce((acc, item) => {
+            const key = item.tomadorNome || "Sem tomador";
+            if (!acc.has(key)) acc.set(key, []);
+            acc.get(key)!.push(item);
+            return acc;
+          }, new Map<string, NfseListItem[]>())
+        )
+      : [];
 
   if (loading) {
     return (
@@ -153,7 +202,6 @@ export function TabNotas({ empresaId }: TabNotasProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="size-5 text-muted-foreground" />
@@ -169,7 +217,6 @@ export function TabNotas({ empresaId }: TabNotasProps) {
         </Link>
       </div>
 
-      {/* Filtros */}
       {nfses.length > 0 && (
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[160px] max-w-sm">
@@ -196,24 +243,123 @@ export function TabNotas({ empresaId }: TabNotasProps) {
               { value: "erro", label: "Erro" },
             ]}
           />
+          <CustomSelect
+            value={filterTomador}
+            onChange={setFilterTomador}
+            triggerClassName="w-[240px]"
+            options={[
+              { value: "", label: "Todos os tomadores" },
+              ...uniqueTomadores.map((tomador) => ({
+                value: tomador,
+                label: tomador,
+                description: tomadoresRecentes.includes(tomador) ? "Recente" : undefined,
+              })),
+            ]}
+          />
+          <div className="flex items-center gap-1 rounded-xl border border-violet-500/20 bg-violet-500/5 p-1">
+            <button
+              onClick={() => setGroupBy("none")}
+              className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                groupBy === "none"
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
+              }`}
+              title="Lista simples"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setGroupBy("tomador")}
+              className={`rounded px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                groupBy === "tomador"
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
+              }`}
+              title="Agrupar por tomador"
+            >
+              <User className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Tabela ou empty state */}
       <div className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <FileText className="size-10 mb-3 text-muted-foreground/60" />
             <p className="text-sm">
-              {nfses.length === 0
-                ? "Nenhuma nota fiscal emitida"
-                : "Nenhuma nota fiscal encontrada"}
+              {nfses.length === 0 ? "Nenhuma nota fiscal emitida" : "Nenhuma nota fiscal encontrada"}
             </p>
             {nfses.length === 0 && (
-              <p className="text-xs mt-1">
-                Emita a primeira NFS-e desta empresa
-              </p>
+              <p className="text-xs mt-1">Emita a primeira NFS-e desta empresa</p>
             )}
+          </div>
+        ) : groupBy === "tomador" ? (
+          <div className="space-y-3 p-3">
+            {groupedByTomador.map(([tomador, notas]) => (
+              <div key={tomador} className="overflow-hidden rounded-lg border border-border">
+                <div className="flex items-center justify-between bg-muted/30 px-3 py-2">
+                  <p className="text-sm font-medium text-foreground">{tomador}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {notas.length} {notas.length === 1 ? "nota" : "notas"}
+                  </span>
+                </div>
+                <Table>
+                  <TableBody>
+                    {notas.map((n) => (
+                      <TableRow
+                        key={n.id}
+                        className="hover:bg-accent/30 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/nfse/${n.id}`)}
+                      >
+                        <TableCell className="text-foreground font-mono text-xs">
+                          {n.serie}-{n.numero}
+                        </TableCell>
+                        <TableCell className="text-foreground max-w-[220px] truncate">
+                          {n.descricaoServico}
+                        </TableCell>
+                        <TableCell className="text-right text-foreground tabular-nums">
+                          {Number(n.valorServico).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <StatusBadge status={n.status} />
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {format(n.dataEmissao, "dd/MM/yyyy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-2">
+                            <ActionIconButton
+                              title="Visualizar"
+                              onClick={() => router.push(`/nfse/${n.id}`)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </ActionIconButton>
+                            <ActionIconButton
+                              title="XML"
+                              onClick={() => handleDownloadXml(n.id)}
+                              disabled={n.status !== "autorizada" && n.status !== "processando"}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </ActionIconButton>
+                            <ActionIconButton
+                              title="PDF"
+                              onClick={() => handleDownloadPdf(n.id)}
+                              disabled={n.status !== "autorizada"}
+                            >
+                              <Download className="h-4 w-4" />
+                            </ActionIconButton>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))}
           </div>
         ) : (
           <Table>
@@ -256,42 +402,28 @@ export function TabNotas({ empresaId }: TabNotasProps) {
                   <TableCell className="text-muted-foreground text-xs">
                     {format(n.dataEmissao, "dd/MM/yyyy", { locale: ptBR })}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div
-                      className="flex items-center justify-end gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => router.push(`/nfse/${n.id}`)}
-                        className="cursor-pointer text-muted-foreground hover:text-foreground"
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      <ActionIconButton
                         title="Visualizar"
+                        onClick={() => router.push(`/nfse/${n.id}`)}
                       >
                         <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadXml(n.id)}
-                        className={
-                          n.status === "autorizada" || n.status === "processando"
-                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
-                            : "text-zinc-800 cursor-not-allowed"
-                        }
+                      </ActionIconButton>
+                      <ActionIconButton
                         title="XML"
+                        onClick={() => handleDownloadXml(n.id)}
                         disabled={n.status !== "autorizada" && n.status !== "processando"}
                       >
                         <FileText className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadPdf(n.id)}
-                        className={
-                          n.status === "autorizada"
-                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
-                            : "text-zinc-800 cursor-not-allowed"
-                        }
+                      </ActionIconButton>
+                      <ActionIconButton
                         title="PDF"
+                        onClick={() => handleDownloadPdf(n.id)}
                         disabled={n.status !== "autorizada"}
                       >
                         <Download className="h-4 w-4" />
-                      </button>
+                      </ActionIconButton>
                     </div>
                   </TableCell>
                 </TableRow>

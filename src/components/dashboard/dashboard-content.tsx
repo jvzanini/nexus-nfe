@@ -24,6 +24,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import {
   getDashboardData,
@@ -131,6 +132,7 @@ interface StatCardDef {
 export function DashboardContent({ userName }: DashboardContentProps) {
   const router = useRouter();
   const [periodo, setPeriodo] = useState<Periodo>("30dias");
+  const [empresaId, setEmpresaId] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -139,12 +141,12 @@ export function DashboardContent({ userName }: DashboardContentProps) {
     async (showRefresh = false) => {
       if (showRefresh) setRefreshing(true);
       else setLoading(true);
-      const res = await getDashboardData(periodo);
+      const res = await getDashboardData(periodo, empresaId || undefined);
       if (res.success && res.data) setData(res.data);
       setLoading(false);
       setRefreshing(false);
     },
-    [periodo]
+    [periodo, empresaId]
   );
 
   useEffect(() => {
@@ -241,7 +243,7 @@ export function DashboardContent({ userName }: DashboardContentProps) {
         className="flex items-center justify-between"
       >
         <h2 className="text-lg font-bold text-foreground">Dashboard</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
             {(["hoje", "7dias", "30dias"] as const).map((p) => (
               <button
@@ -257,6 +259,18 @@ export function DashboardContent({ userName }: DashboardContentProps) {
               </button>
             ))}
           </div>
+          <CustomSelect
+            value={empresaId}
+            onChange={setEmpresaId}
+            triggerClassName="w-[220px] h-8"
+            options={[
+              { value: "", label: "Todas as empresas" },
+              ...(data?.empresas ?? []).map((empresa) => ({
+                value: empresa.id,
+                label: empresa.nome,
+              })),
+            ]}
+          />
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}

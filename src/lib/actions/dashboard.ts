@@ -33,10 +33,15 @@ export interface DashboardData {
     clienteMeiRazaoSocial: string;
     dataEmissao: Date;
   }>;
+  empresas: Array<{
+    id: string;
+    nome: string;
+  }>;
 }
 
 export async function getDashboardData(
-  periodo: "hoje" | "7dias" | "30dias" = "30dias"
+  periodo: "hoje" | "7dias" | "30dias" = "30dias",
+  clienteMeiId?: string
 ): Promise<ActionResult<DashboardData>> {
   try {
     await requireRole("admin");
@@ -51,9 +56,12 @@ export async function getDashboardData(
       startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    const [nfses, empresasCount] = await Promise.all([
+    const [nfses, empresasCount, empresas] = await Promise.all([
       prisma.nfse.findMany({
-        where: { dataEmissao: { gte: startDate } },
+        where: {
+          dataEmissao: { gte: startDate },
+          ...(clienteMeiId ? { clienteMeiId } : {}),
+        },
         select: {
           id: true,
           serie: true,
@@ -63,11 +71,18 @@ export async function getDashboardData(
           valorServico: true,
           tomadorNome: true,
           dataEmissao: true,
-          clienteMei: { select: { razaoSocial: true } },
+          clienteMei: { select: { id: true, razaoSocial: true } },
         },
         orderBy: { dataEmissao: "desc" },
       }),
-      prisma.clienteMei.count({ where: { isActive: true } }),
+      prisma.clienteMei.count({
+        where: { isActive: true },
+      }),
+      prisma.clienteMei.findMany({
+        where: { isActive: true },
+        select: { id: true, razaoSocial: true },
+        orderBy: { razaoSocial: "asc" },
+      }),
     ]);
 
     const autorizadas = nfses.filter((n) => n.status === "autorizada");
@@ -118,6 +133,10 @@ export async function getDashboardData(
           tomadorNome: n.tomadorNome,
           clienteMeiRazaoSocial: n.clienteMei.razaoSocial,
           dataEmissao: n.dataEmissao,
+        })),
+        empresas: empresas.map((empresa) => ({
+          id: empresa.id,
+          nome: empresa.razaoSocial,
         })),
       },
     };

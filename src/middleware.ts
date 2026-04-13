@@ -11,6 +11,6 @@ export default auth;
 export const config = {
   // Protege tudo exceto assets estáticos, imagens, favicon, health e rotas do NextAuth
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|api/health|api/auth|api/v1|api/setup|api/debug-login|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|api/health|api/auth|api/v1|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -20,6 +20,7 @@ export const authConfig = {
         nextUrl.pathname === "/verify-email" ||
         nextUrl.pathname === "/api/health" ||
         nextUrl.pathname === "/api/setup" ||
+        nextUrl.pathname === "/api/debug-login" ||
         nextUrl.pathname.startsWith("/api/auth/");
 
       if (isPublicRoute) return true;

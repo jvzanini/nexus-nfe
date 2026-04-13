@@ -27,14 +27,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus,
-  Pencil,
-  Trash2,
   Building2,
   Loader2,
   ShieldCheck,
   ShieldAlert,
   ShieldOff,
-  Download,
+  Search,
   AlertTriangle,
   CheckCircle2,
   FileText,
@@ -209,12 +207,8 @@ function CertStatus({
 
 function EmpresaCard({
   cliente,
-  onEdit,
-  onDelete,
 }: {
   cliente: ClienteMeiListItem;
-  onEdit: (c: ClienteMeiListItem) => void;
-  onDelete: (c: ClienteMeiListItem) => void;
 }) {
   const router = useRouter();
 
@@ -228,40 +222,11 @@ function EmpresaCard({
         <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-violet-600/5 blur-2xl" />
       </div>
 
-      {/* Actions floating top-right */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onEdit(cliente);
-          }}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onDelete(cliente);
-          }}
-          className="h-7 w-7 text-muted-foreground hover:text-red-400 cursor-pointer"
-          disabled={!cliente.isActive}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
       <CardContent className="p-5 relative">
         {/* Header: icon + nome + status */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-muted border border-border/50 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-muted border border-border/50 flex items-center justify-center shrink-0">
               <Building2 className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
@@ -495,7 +460,7 @@ export function ClientesContent() {
               {fetchingCnpj ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Search className="h-4 w-4" />
               )}
               Buscar
             </Button>
@@ -716,8 +681,6 @@ export function ClientesContent() {
               <EmpresaCard
                 key={c.id}
                 cliente={c}
-                onEdit={openEdit}
-                onDelete={openDeleteDialog}
               />
             ))}
           </div>
@@ -730,8 +693,7 @@ export function ClientesContent() {
           <DialogHeader>
             <DialogTitle>Nova Empresa</DialogTitle>
             <DialogDescription>
-              Cadastre uma empresa MEI. O CNPJ pode ser preenchido
-              automaticamente via BrasilAPI.
+              Cadastre uma nova empresa. Ao preencher o CNPJ, os dados podem ser carregados automaticamente.
             </DialogDescription>
           </DialogHeader>
           {renderForm()}

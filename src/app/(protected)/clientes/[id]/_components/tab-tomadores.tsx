@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Plus, Trash2, Users, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, ChevronUp, Search, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,11 +23,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   listarTomadoresFavoritos,
   excluirTomadorFavorito,
   salvarTomadorFavorito,
+  atualizarTomadorFavorito,
   type TomadorFavoritoItem,
 } from "@/lib/actions/tomadores-favoritos";
 import { format } from "date-fns";
@@ -46,11 +62,18 @@ function formatCnpj(v: string) {
     .replace(/(\d{4})(\d)/, "$1-$2");
 }
 
+function formatDocumento(doc: string) {
+  const clean = doc.replace(/\D/g, "");
+  if (clean.length <= 11) return formatCpf(clean);
+  return formatCnpj(clean);
+}
+
 export function TabTomadores({ empresaId }: TabTomadoresProps) {
   const [tomadores, setTomadores] = useState<TomadorFavoritoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, startDeleting] = useTransition();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   // Form novo tomador
   const [showForm, setShowForm] = useState(false);
@@ -59,6 +82,12 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
   const [formDoc, setFormDoc] = useState("");
   const [formNome, setFormNome] = useState("");
   const [formEmail, setFormEmail] = useState("");
+
+  // Edit dialog
+  const [editItem, setEditItem] = useState<TomadorFavoritoItem | null>(null);
+  const [editNome, setEditNome] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editSaving, startEditSaving] = useTransition();
 
   async function load() {
     const result = await listarTomadoresFavoritos(empresaId);
@@ -136,24 +165,66 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
     });
   }
 
+  function openEdit(t: TomadorFavoritoItem) {
+    setEditItem(t);
+    setEditNome(t.nome);
+    setEditEmail(t.email || "");
+  }
+
+  function handleEditSave() {
+    if (!editItem) return;
+    if (!editNome.trim()) {
+      toast.error("Nome é obrigatório");
+      return;
+    }
+    startEditSaving(async () => {
+      const result = await atualizarTomadorFavorito(editItem.id, {
+        nome: editNome.trim(),
+        email: editEmail.trim() || undefined,
+      });
+      if (result.success) {
+        toast.success("Tomador atualizado");
+        setEditItem(null);
+        await load();
+      } else {
+        toast.error(result.error || "Erro ao atualizar tomador");
+      }
+    });
+  }
+
+  const filtered = tomadores.filter((t) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      t.nome.toLowerCase().includes(q) ||
+      t.documento.includes(q) ||
+      (t.email && t.email.toLowerCase().includes(q))
+    );
+  });
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+      <div className="space-y-4">
+        <div className="h-10 bg-muted/50 rounded-lg animate-pulse" />
+        <div className="h-64 bg-muted/50 rounded-xl animate-pulse" />
       </div>
     );
   }
 
   const formSection = (
     <>
-      {/* Header com botão */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div />
+        <div className="flex items-center gap-2">
+          <Users className="size-5 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-foreground/80">
+            {tomadores.length} {tomadores.length === 1 ? "tomador" : "tomadores"}
+          </h3>
+        </div>
         <Button
-          variant="outline"
           size="sm"
           onClick={() => setShowForm(!showForm)}
-          className="gap-2 cursor-pointer"
+          className="gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white"
         >
           {showForm ? (
             <ChevronUp className="h-4 w-4" />
@@ -164,7 +235,7 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
         </Button>
       </div>
 
-      {/* Form colapsável */}
+      {/* Form colapsavel */}
       {showForm && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-4">
           {/* Tipo de documento */}
@@ -242,7 +313,7 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
             />
           </div>
 
-          {/* Ações */}
+          {/* Acoes */}
           <div className="flex justify-end gap-2 pt-1">
             <Button
               variant="outline"
@@ -268,88 +339,135 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
     </>
   );
 
-  if (tomadores.length === 0) {
-    return (
-      <div className="space-y-4">
-        {formSection}
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-border bg-card">
-          <Users className="h-12 w-12 mb-3 text-muted-foreground/60" />
-          <p className="text-sm">Nenhum tomador favorito</p>
-          <p className="text-xs mt-1">
-            Tomadores são salvos automaticamente ao emitir uma NFS-e
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {formSection}
-      <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Nome
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Documento
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  E-mail
-                </th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Usos
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Último uso
-                </th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tomadores.map((t) => (
-                <tr
-                  key={t.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
-                >
-                  <td className="px-4 py-3 text-foreground font-medium">
-                    {t.nome}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                    {t.documento}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {t.email || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-center text-muted-foreground tabular-nums">
-                    {t.usoCount}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {t.ultimoUso
-                      ? format(t.ultimoUso, "dd/MM/yyyy HH:mm", { locale: ptBR })
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setDeleteId(t.id)}
-                      className="text-muted-foreground hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      {/* Busca */}
+      {tomadores.length > 0 && (
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar tomador..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
+      )}
+
+      {/* Tabela ou empty state */}
+      <div className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Users className="size-10 mb-3 text-muted-foreground/60" />
+            <p className="text-sm">
+              {tomadores.length === 0
+                ? "Nenhum tomador favorito"
+                : "Nenhum tomador encontrado"}
+            </p>
+            {tomadores.length === 0 && (
+              <p className="text-xs mt-1">
+                Tomadores são salvos automaticamente ao emitir uma NFS-e
+              </p>
+            )}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Nome</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Documento</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">E-mail</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-center">Usos</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Último uso</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((t) => (
+                <TableRow
+                  key={t.id}
+                  className="hover:bg-accent/30 transition-colors"
+                >
+                  <TableCell className="text-foreground font-medium">
+                    {t.nome}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">
+                    {formatDocumento(t.documento)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {t.email || "\u2014"}
+                  </TableCell>
+                  <TableCell className="text-center text-muted-foreground tabular-nums">
+                    {t.usoCount}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    {t.ultimoUso
+                      ? format(t.ultimoUso, "dd/MM/yyyy", { locale: ptBR })
+                      : "\u2014"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(t)}
+                        className="cursor-pointer text-muted-foreground hover:text-foreground p-1 rounded transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(t.id)}
+                        className="cursor-pointer text-muted-foreground hover:text-red-400 p-1 rounded transition-colors"
+                        title="Remover"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar tomador</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground/80">Nome / Razão Social</Label>
+              <Input
+                value={editNome}
+                onChange={(e) => setEditNome(e.target.value)}
+                className="bg-muted/50 border-border text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground/80">E-mail</Label>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                className="bg-muted/50 border-border text-foreground"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEditItem(null)} disabled={editSaving} className="cursor-pointer">
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleEditSave} disabled={editSaving} className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer">
+              {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirm */}
       <AlertDialog

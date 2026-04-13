@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -28,11 +28,13 @@ import {
   User,
   ChevronDown,
   ChevronRight,
+  Eye,
+  Download,
 } from "lucide-react";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { TutorialDialog } from "@/components/nfse/tutorial-dialog";
 import { toast } from "sonner";
-import { listarNfsesComFiltros, type NfseFilters, type NfseListItem } from "@/lib/actions/nfse";
+import { listarNfsesComFiltros, downloadXmlNfse, downloadPdfNfse, type NfseFilters, type NfseListItem } from "@/lib/actions/nfse";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -206,6 +208,7 @@ function GroupSection({
 export function NfseContent() {
   const [nfses, setNfses] = useState<NfseListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloading, startDownloading] = useTransition();
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
@@ -241,6 +244,43 @@ export function NfseContent() {
     setLoading(true);
     loadNfses();
   }, [filterStatus]);
+
+  function handleDownloadXml(id: string) {
+    startDownloading(async () => {
+      const result = await downloadXmlNfse(id);
+      if (result.success && result.data) {
+        const blob = new Blob([result.data.xml], { type: "application/xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.data.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        toast.error(result.error || "Erro ao baixar XML");
+      }
+    });
+  }
+
+  function handleDownloadPdf(id: string) {
+    startDownloading(async () => {
+      const result = await downloadPdfNfse(id);
+      if (result.success && result.data) {
+        const blob = new Blob(
+          [Uint8Array.from(atob(result.data.pdf), (c) => c.charCodeAt(0))],
+          { type: "application/pdf" }
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.data.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        toast.error(result.error || "Erro ao gerar PDF");
+      }
+    });
+  }
 
   const uniqueTomadores = [...new Set(nfses.map((n) => n.tomadorNome))].sort();
 
@@ -413,26 +453,29 @@ export function NfseContent() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-muted-foreground">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">
                   Número
                 </TableHead>
-                <TableHead className="text-muted-foreground">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">
                   Cliente
                 </TableHead>
-                <TableHead className="text-muted-foreground hidden md:table-cell">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium hidden md:table-cell">
                   Serviço
                 </TableHead>
-                <TableHead className="text-muted-foreground hidden lg:table-cell">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium hidden lg:table-cell">
                   Tomador
                 </TableHead>
-                <TableHead className="text-muted-foreground text-right">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right">
                   Valor
                 </TableHead>
-                <TableHead className="text-muted-foreground text-center">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-center">
                   Status
                 </TableHead>
-                <TableHead className="text-muted-foreground text-right hidden sm:table-cell">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right hidden sm:table-cell">
                   Data
+                </TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right">
+                  Ações
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -472,6 +515,41 @@ export function NfseContent() {
                     {format(new Date(n.dataEmissao), "dd/MM/yyyy", {
                       locale: ptBR,
                     })}
+                  </TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => router.push(`/nfse/${n.id}`)}
+                        className="cursor-pointer text-muted-foreground hover:text-foreground"
+                        title="Visualizar"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadXml(n.id)}
+                        className={
+                          n.status === "autorizada" || n.status === "processando"
+                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
+                            : "text-zinc-800 cursor-not-allowed"
+                        }
+                        title="XML"
+                        disabled={n.status !== "autorizada" && n.status !== "processando"}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPdf(n.id)}
+                        className={
+                          n.status === "autorizada"
+                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
+                            : "text-zinc-800 cursor-not-allowed"
+                        }
+                        title="PDF"
+                        disabled={n.status !== "autorizada"}
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    </div>
                   </TableCell>
                 </motion.tr>
               ))}

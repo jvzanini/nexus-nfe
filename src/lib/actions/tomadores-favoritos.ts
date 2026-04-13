@@ -121,6 +121,32 @@ export async function registrarUsoTomador(id: string): Promise<ActionResult> {
 }
 
 /**
+ * Atualiza nome e/ou email de um tomador favorito.
+ */
+export async function atualizarTomadorFavorito(
+  id: string,
+  input: { nome: string; email?: string }
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    await requireRole("admin");
+
+    const result = await prisma.tomadorFavorito.update({
+      where: { id },
+      data: {
+        nome: input.nome,
+        email: input.email ?? null,
+      },
+      select: { id: true },
+    });
+
+    return { success: true, data: { id: result.id } };
+  } catch (error) {
+    console.error("[tomadores-favoritos.atualizar]", error);
+    return { success: false, error: "Erro ao atualizar tomador favorito" };
+  }
+}
+
+/**
  * Remove um tomador favorito.
  */
 export async function excluirTomadorFavorito(id: string): Promise<ActionResult> {

@@ -3,8 +3,18 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Eye, Download, FileText, Plus } from "lucide-react";
+import { Loader2, Eye, Download, FileText, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { toast } from "sonner";
 import {
   listarNfses,
@@ -22,35 +32,59 @@ interface TabNotasProps {
 const statusConfig: Record<string, { label: string; className: string }> = {
   rascunho: {
     label: "Rascunho",
-    className: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30",
+    className:
+      "border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-muted-foreground",
   },
   processando: {
     label: "Processando",
-    className: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+    className:
+      "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
   },
   autorizada: {
     label: "Autorizada",
-    className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    className:
+      "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
   rejeitada: {
     label: "Rejeitada",
-    className: "bg-red-500/10 text-red-400 border-red-500/30",
+    className:
+      "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
   },
   erro: {
     label: "Erro",
-    className: "bg-red-500/10 text-red-400 border-red-500/30",
+    className:
+      "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
   },
   cancelada: {
     label: "Cancelada",
-    className: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    className:
+      "border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-muted-foreground",
+  },
+  pendente: {
+    label: "Pendente",
+    className:
+      "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
 };
+
+function StatusBadge({ status }: { status: string }) {
+  const config = statusConfig[status] ?? statusConfig.rascunho;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${config.className}`}
+    >
+      {config.label}
+    </span>
+  );
+}
 
 export function TabNotas({ empresaId }: TabNotasProps) {
   const router = useRouter();
   const [nfses, setNfses] = useState<NfseListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, startDownloading] = useTransition();
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   useEffect(() => {
     listarNfses(empresaId).then((result) => {
@@ -61,7 +95,7 @@ export function TabNotas({ empresaId }: TabNotasProps) {
     });
   }, [empresaId]);
 
-  function handleDownload(id: string) {
+  function handleDownloadXml(id: string) {
     startDownloading(async () => {
       const result = await downloadXmlNfse(id);
       if (result.success && result.data) {
@@ -98,141 +132,173 @@ export function TabNotas({ empresaId }: TabNotasProps) {
     });
   }
 
+  const filtered = nfses.filter((n) => {
+    if (filterStatus && n.status !== filterStatus) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return [n.tomadorNome, n.descricaoServico, `${n.serie}-${n.numero}`]
+        .some((f) => f?.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
-      </div>
-    );
-  }
-
-  if (nfses.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-border bg-card">
-        <FileText className="h-12 w-12 mb-3 text-muted-foreground/60" />
-        <p className="text-sm">Nenhuma nota fiscal emitida</p>
-        <p className="text-xs mt-1 mb-4">
-          Emita a primeira NFS-e desta empresa
-        </p>
-        <Link href="/nfse/nova">
-          <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer">
-            <Plus className="h-4 w-4" />
-            Nova NFS-e
-          </Button>
-        </Link>
+      <div className="space-y-4">
+        <div className="h-10 bg-muted/50 rounded-lg animate-pulse" />
+        <div className="h-64 bg-muted/50 rounded-xl animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Número
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Serviço
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Tomador
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Valor
-              </th>
-              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Status
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Data
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {nfses.map((n) => {
-              const status = statusConfig[n.status] ?? {
-                label: n.status,
-                className: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30",
-              };
-              return (
-                <tr
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="size-5 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-foreground/80">
+            {nfses.length} {nfses.length === 1 ? "nota fiscal" : "notas fiscais"}
+          </h3>
+        </div>
+        <Link href="/nfse/nova">
+          <Button size="sm" className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer">
+            <Plus className="h-4 w-4" />
+            Nova NFS-e
+          </Button>
+        </Link>
+      </div>
+
+      {/* Filtros */}
+      {nfses.length > 0 && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[160px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por tomador, serviço, número..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <CustomSelect
+            value={filterStatus}
+            onChange={setFilterStatus}
+            triggerClassName="w-[180px]"
+            options={[
+              { value: "", label: "Todos os status" },
+              { value: "rascunho", label: "Rascunho" },
+              { value: "pendente", label: "Pendente" },
+              { value: "processando", label: "Processando" },
+              { value: "autorizada", label: "Autorizada" },
+              { value: "rejeitada", label: "Rejeitada" },
+              { value: "cancelada", label: "Cancelada" },
+              { value: "erro", label: "Erro" },
+            ]}
+          />
+        </div>
+      )}
+
+      {/* Tabela ou empty state */}
+      <div className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <FileText className="size-10 mb-3 text-muted-foreground/60" />
+            <p className="text-sm">
+              {nfses.length === 0
+                ? "Nenhuma nota fiscal emitida"
+                : "Nenhuma nota fiscal encontrada"}
+            </p>
+            {nfses.length === 0 && (
+              <p className="text-xs mt-1">
+                Emita a primeira NFS-e desta empresa
+              </p>
+            )}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Número</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Serviço</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Tomador</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right">Valor</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-center">Status</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium">Data</TableHead>
+                <TableHead className="text-xs uppercase text-muted-foreground font-medium text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((n) => (
+                <TableRow
                   key={n.id}
-                  className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
+                  className="hover:bg-accent/30 transition-colors cursor-pointer"
                   onClick={() => router.push(`/nfse/${n.id}`)}
                 >
-                  <td className="px-4 py-3 text-foreground font-mono text-xs">
+                  <TableCell className="text-foreground font-mono text-xs">
                     {n.serie}-{n.numero}
-                  </td>
-                  <td className="px-4 py-3 text-foreground max-w-[200px] truncate">
+                  </TableCell>
+                  <TableCell className="text-foreground max-w-[200px] truncate">
                     {n.descricaoServico}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {n.tomadorNome}
-                  </td>
-                  <td className="px-4 py-3 text-right text-foreground tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right text-foreground tabular-nums">
                     {Number(n.valorServico).toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
                     })}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${status.className}`}
-                    >
-                      {status.label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <StatusBadge status={n.status} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
                     {format(n.dataEmissao, "dd/MM/yyyy", { locale: ptBR })}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div
-                      className="flex items-center justify-end gap-1"
+                      className="flex items-center justify-end gap-2"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Link href={`/nfse/${n.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-muted-foreground hover:text-foreground cursor-pointer"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleDownloadPdf(n.id)}
-                        disabled={downloading}
-                        className="text-muted-foreground hover:text-foreground cursor-pointer"
-                        title="Baixar PDF"
+                      <button
+                        onClick={() => router.push(`/nfse/${n.id}`)}
+                        className="cursor-pointer text-muted-foreground hover:text-foreground"
+                        title="Visualizar"
                       >
-                        <FileText className="h-3.5 w-3.5" />
-                      </Button>
-                      {(n.status === "autorizada" || n.status === "processando") && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleDownload(n.id)}
-                          disabled={downloading}
-                          className="text-muted-foreground hover:text-foreground cursor-pointer"
-                          title="Baixar XML"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadXml(n.id)}
+                        className={
+                          n.status === "autorizada" || n.status === "processando"
+                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
+                            : "text-zinc-800 cursor-not-allowed"
+                        }
+                        title="XML"
+                        disabled={n.status !== "autorizada" && n.status !== "processando"}
+                      >
+                        <FileText className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPdf(n.id)}
+                        className={
+                          n.status === "autorizada"
+                            ? "cursor-pointer text-muted-foreground hover:text-foreground"
+                            : "text-zinc-800 cursor-not-allowed"
+                        }
+                        title="PDF"
+                        disabled={n.status !== "autorizada"}
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
                     </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );

@@ -3,14 +3,6 @@
 import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +36,7 @@ import {
   Download,
   AlertTriangle,
   CheckCircle2,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -55,8 +48,7 @@ import {
   fetchCnpjBrasilApi,
   type ClienteMeiListItem,
 } from "@/lib/actions/clientes-mei";
-import { format, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { differenceInDays } from "date-fns";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -143,13 +135,13 @@ function formatCep(v: string) {
 
 // --- Components ---
 
-function TableSkeleton() {
+function CardsSkeleton() {
   return (
-    <div className="space-y-3 p-6">
-      {[1, 2, 3, 4, 5].map((i) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
         <div
           key={i}
-          className="h-14 animate-pulse rounded-lg bg-muted/50 border border-border"
+          className="h-40 animate-pulse rounded-xl bg-muted/50 border border-border"
         />
       ))}
     </div>
@@ -165,8 +157,8 @@ function CertBadge({
 }) {
   if (!expiraEm) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-        <ShieldOff className="h-3 w-3" />
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <ShieldOff className="h-3.5 w-3.5" />
         Sem cert.
       </span>
     );
@@ -174,25 +166,113 @@ function CertBadge({
   const dias = differenceInDays(expiraEm, new Date());
   if (!valido || dias < 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
-        <ShieldOff className="h-3 w-3" />
+      <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+        <ShieldOff className="h-3.5 w-3.5" />
         Expirado
       </span>
     );
   }
   if (dias <= 30) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-        <ShieldAlert className="h-3 w-3" />
+      <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+        <ShieldAlert className="h-3.5 w-3.5" />
         Expira em {dias}d
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-      <ShieldCheck className="h-3 w-3" />
-      Válido
+    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+      <ShieldCheck className="h-3.5 w-3.5" />
+      Cert. válido
     </span>
+  );
+}
+
+function EmpresaCard({
+  cliente,
+  onEdit,
+  onDelete,
+}: {
+  cliente: ClienteMeiListItem;
+  onEdit: (c: ClienteMeiListItem) => void;
+  onDelete: (c: ClienteMeiListItem) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="group relative rounded-xl border border-border bg-card/50 hover:bg-accent/30 transition-colors duration-200 overflow-hidden"
+    >
+      {/* Actions floating top-right */}
+      <div className="absolute top-3 right-3 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit(cliente);
+          }}
+          className="h-7 w-7 text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete(cliente);
+          }}
+          className="h-7 w-7 text-muted-foreground hover:text-red-400 cursor-pointer"
+          disabled={!cliente.isActive}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      <Link href={`/clientes/${cliente.id}`} className="block p-5">
+        {/* Header: icon + name + status */}
+        <div className="flex items-start gap-3 mb-1">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600/10 border border-violet-500/20">
+            <Building2 className="h-4 w-4 text-violet-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground truncate">
+                {cliente.razaoSocial}
+              </h3>
+              {cliente.isActive ? (
+                <span className="shrink-0 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                  Ativa
+                </span>
+              ) : (
+                <span className="shrink-0 inline-flex items-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  Inativa
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+              {formatCnpj(cliente.cnpj)}
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom row: stats */}
+        <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <FileText className="h-3.5 w-3.5" />
+            {cliente.totalNfses} nota{cliente.totalNfses !== 1 ? "s" : ""}
+          </span>
+          <CertBadge
+            valido={cliente.certificadoValido}
+            expiraEm={cliente.certificadoExpiraEm}
+          />
+        </div>
+      </Link>
+    </motion.div>
   );
 }
 
@@ -217,7 +297,7 @@ export function ClientesContent() {
     if (result.success && result.data) {
       setClientes(result.data);
     } else {
-      toast.error(result.error || "Erro ao carregar clientes");
+      toast.error(result.error || "Erro ao carregar empresas");
     }
     setLoading(false);
   }
@@ -238,7 +318,7 @@ export function ClientesContent() {
       setEditingId(c.id);
       const det = await getClienteMei(c.id);
       if (!det.success || !det.data) {
-        toast.error(det.error || "Erro ao carregar cliente");
+        toast.error(det.error || "Erro ao carregar empresa");
         return;
       }
       const d = det.data;
@@ -323,12 +403,12 @@ export function ClientesContent() {
     startSaving(async () => {
       const result = await createClienteMei(buildPayload());
       if (result.success) {
-        toast.success("Cliente cadastrado");
+        toast.success("Empresa cadastrada");
         setCreateOpen(false);
         setForm(emptyForm);
         await loadClientes();
       } else {
-        toast.error(result.error || "Erro ao cadastrar cliente");
+        toast.error(result.error || "Erro ao cadastrar empresa");
       }
     });
   }
@@ -341,11 +421,11 @@ export function ClientesContent() {
         isActive: form.isActive,
       });
       if (result.success) {
-        toast.success("Cliente atualizado");
+        toast.success("Empresa atualizada");
         setEditOpen(false);
         await loadClientes();
       } else {
-        toast.error(result.error || "Erro ao atualizar cliente");
+        toast.error(result.error || "Erro ao atualizar empresa");
       }
     });
   }
@@ -355,12 +435,12 @@ export function ClientesContent() {
     startDeleting(async () => {
       const result = await deleteClienteMei(clienteToDelete.id);
       if (result.success) {
-        toast.success("Cliente inativado");
+        toast.success("Empresa inativada");
         setDeleteDialogOpen(false);
         setClienteToDelete(null);
         await loadClientes();
       } else {
-        toast.error(result.error || "Erro ao excluir cliente");
+        toast.error(result.error || "Erro ao excluir empresa");
       }
     });
   }
@@ -545,7 +625,7 @@ export function ClientesContent() {
                 <AlertTriangle className="h-4 w-4 text-red-400" />
               )}
               <span className="text-sm text-foreground/80">
-                {form.isActive ? "Ativo" : "Inativo"}
+                {form.isActive ? "Ativa" : "Inativa"}
               </span>
             </div>
             <Switch
@@ -577,9 +657,9 @@ export function ClientesContent() {
             <Building2 className="h-5 w-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Clientes MEI</h1>
+            <h1 className="text-xl font-bold text-foreground">Empresas</h1>
             <p className="text-sm text-muted-foreground">
-              Prestadores cujas notas são emitidas pela plataforma
+              Gerencie suas empresas MEI e suas integrações
             </p>
           </div>
         </div>
@@ -588,127 +668,33 @@ export function ClientesContent() {
           className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200"
         >
           <Plus className="h-4 w-4" />
-          Novo Cliente
+          Nova Empresa
         </Button>
       </motion.div>
 
-      {/* Table */}
-      <motion.div
-        variants={itemVariants}
-        className="rounded-xl border border-border bg-card/50 overflow-hidden overflow-x-auto"
-      >
+      {/* Cards Grid */}
+      <motion.div variants={itemVariants}>
         {loading ? (
-          <TableSkeleton />
+          <CardsSkeleton />
         ) : clientes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-border bg-card/50">
             <Building2 className="h-12 w-12 mb-3 text-muted-foreground/60" />
-            <p className="text-sm">Nenhum cliente cadastrado</p>
+            <p className="text-sm">Nenhuma empresa cadastrada</p>
             <p className="text-xs mt-1">
-              Cadastre o primeiro MEI pra começar a emitir notas
+              Cadastre a primeira empresa pra começar a emitir notas
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-muted-foreground">
-                  Razão Social
-                </TableHead>
-                <TableHead className="text-muted-foreground">CNPJ</TableHead>
-                <TableHead className="text-muted-foreground text-center hidden md:table-cell">
-                  Certificado
-                </TableHead>
-                <TableHead className="text-muted-foreground text-center hidden sm:table-cell">
-                  Notas
-                </TableHead>
-                <TableHead className="text-muted-foreground text-center hidden lg:table-cell">
-                  Série / Último
-                </TableHead>
-                <TableHead className="text-muted-foreground text-center">
-                  Status
-                </TableHead>
-                <TableHead className="text-muted-foreground text-center">
-                  Ações
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clientes.map((c, index) => (
-                <motion.tr
-                  key={c.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.2,
-                    delay: index * 0.03,
-                    ease: "easeOut" as const,
-                  }}
-                  className="border-border hover:bg-accent/30 transition-colors duration-200"
-                >
-                  <TableCell className="font-medium text-foreground">
-                    <Link
-                      href={`/clientes/${c.id}`}
-                      className="flex flex-col hover:text-violet-500 transition-colors"
-                    >
-                      <span>{c.razaoSocial}</span>
-                      {c.nomeFantasia && (
-                        <span className="text-xs text-muted-foreground">
-                          {c.nomeFantasia}
-                        </span>
-                      )}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-xs">
-                    {formatCnpj(c.cnpj)}
-                  </TableCell>
-                  <TableCell className="text-center hidden md:table-cell">
-                    <CertBadge
-                      valido={c.certificadoValido}
-                      expiraEm={c.certificadoExpiraEm}
-                    />
-                  </TableCell>
-                  <TableCell className="text-center hidden sm:table-cell text-muted-foreground">
-                    {c.totalNfses}
-                  </TableCell>
-                  <TableCell className="text-center hidden lg:table-cell text-muted-foreground font-mono text-xs">
-                    {c.serieDpsAtual} / {c.ultimoNumeroDps}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {c.isActive ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        Ativo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        Inativo
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEdit(c)}
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openDeleteDialog(c)}
-                        className="h-8 w-8 text-muted-foreground hover:text-red-400 cursor-pointer"
-                        disabled={!c.isActive}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </motion.tr>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {clientes.map((c) => (
+              <EmpresaCard
+                key={c.id}
+                cliente={c}
+                onEdit={openEdit}
+                onDelete={openDeleteDialog}
+              />
+            ))}
+          </div>
         )}
       </motion.div>
 
@@ -716,9 +702,9 @@ export function ClientesContent() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Novo Cliente MEI</DialogTitle>
+            <DialogTitle>Nova Empresa</DialogTitle>
             <DialogDescription>
-              Cadastre um prestador MEI. O CNPJ pode ser preenchido
+              Cadastre uma empresa MEI. O CNPJ pode ser preenchido
               automaticamente via BrasilAPI.
             </DialogDescription>
           </DialogHeader>
@@ -747,9 +733,9 @@ export function ClientesContent() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Cliente MEI</DialogTitle>
+            <DialogTitle>Editar Empresa</DialogTitle>
             <DialogDescription>
-              Atualize os dados do prestador.
+              Atualize os dados da empresa.
             </DialogDescription>
           </DialogHeader>
           {renderForm()}
@@ -777,13 +763,13 @@ export function ClientesContent() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Inativar cliente?</AlertDialogTitle>
+            <AlertDialogTitle>Inativar empresa?</AlertDialogTitle>
             <AlertDialogDescription>
-              O cliente{" "}
+              A empresa{" "}
               <strong className="text-foreground">
                 {clienteToDelete?.razaoSocial}
               </strong>{" "}
-              será marcado como inativo. O histórico de notas fiscais será
+              será marcada como inativa. O histórico de notas fiscais será
               preservado.
             </AlertDialogDescription>
           </AlertDialogHeader>

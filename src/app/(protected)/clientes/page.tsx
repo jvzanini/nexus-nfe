@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { ClientesContent } from "./clientes-content";
 
-export const metadata = { title: "Clientes MEI" };
+export const metadata = { title: "Empresas" };
 
 export default async function ClientesPage() {
   const user = await getCurrentUser();

@@ -61,6 +61,7 @@ jobs:
           if [ -n "$EXEC_ID1" ]; then
             curl --insecure -s --max-time 60 -X POST \
               -H "Content-Type: application/json" \
+              -H "X-API-Key: ${PORTAINER_TOKEN}" \
               -d '{"Detach":true}' \
               "${PORTAINER_URL}/api/endpoints/1/docker/exec/${EXEC_ID1}/start" || true
             echo "Migrate disparado (detached)"
@@ -81,6 +82,7 @@ jobs:
           if [ -n "$EXEC_ID2" ]; then
             curl --insecure -s --max-time 30 -X POST \
               -H "Content-Type: application/json" \
+              -H "X-API-Key: ${PORTAINER_TOKEN}" \
               -d '{"Detach":true}' \
               "${PORTAINER_URL}/api/endpoints/1/docker/exec/${EXEC_ID2}/start" || true
             echo "Seed disparado (detached)"

@@ -5,31 +5,129 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useSearch } from "@/components/layout/search-context";
-import { Search, Loader2, User, Settings } from "lucide-react";
-
-interface SearchItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  href: string;
-  type: "user" | "setting";
-  meta?: string;
-}
+import {
+  Search,
+  Loader2,
+  Building2,
+  FileText,
+  User,
+  Users,
+  Code2,
+} from "lucide-react";
 
 interface SearchResponse {
-  users: SearchItem[];
-  settings: SearchItem[];
+  empresas: Array<{
+    id: string;
+    razaoSocial: string;
+    cnpj: string;
+    nomeFantasia: string | null;
+  }>;
+  nfse: Array<{
+    id: string;
+    serie: string;
+    numero: string;
+    descricaoServico: string;
+    status: string;
+    tomadorNome: string;
+  }>;
+  tomadores: Array<{
+    id: string;
+    nome: string;
+    documento: string;
+    clienteMeiId: string;
+  }>;
+  usuarios: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  api: Array<{
+    path: string;
+    description: string;
+  }>;
 }
 
-const ICON_MAP = {
-  user: User,
-  setting: Settings,
-} as const;
+const GROUPS = [
+  {
+    key: "empresas" as const,
+    label: "Empresas",
+    icon: Building2,
+    toItems: (data: SearchResponse) =>
+      data.empresas.map((e) => ({
+        id: e.id,
+        title: e.razaoSocial,
+        subtitle: formatCnpj(e.cnpj),
+        href: `/clientes/${e.id}`,
+      })),
+  },
+  {
+    key: "nfse" as const,
+    label: "NFS-e",
+    icon: FileText,
+    toItems: (data: SearchResponse) =>
+      data.nfse.map((n) => ({
+        id: n.id,
+        title: `${n.serie}-${n.numero}`,
+        subtitle: `${n.tomadorNome} — ${truncate(n.descricaoServico, 50)}`,
+        href: `/nfse/${n.id}`,
+      })),
+  },
+  {
+    key: "tomadores" as const,
+    label: "Tomadores",
+    icon: User,
+    toItems: (data: SearchResponse) =>
+      data.tomadores.map((t) => ({
+        id: t.id,
+        title: t.nome,
+        subtitle: formatDocumento(t.documento),
+        href: `/clientes/${t.clienteMeiId}?tab=tomadores`,
+      })),
+  },
+  {
+    key: "usuarios" as const,
+    label: "Usuários",
+    icon: Users,
+    toItems: (data: SearchResponse) =>
+      data.usuarios.map((u) => ({
+        id: u.id,
+        title: u.name,
+        subtitle: u.email,
+        href: "/users",
+      })),
+  },
+  {
+    key: "api" as const,
+    label: "Endpoints API",
+    icon: Code2,
+    toItems: (data: SearchResponse) =>
+      data.api.map((a) => ({
+        id: a.path,
+        title: a.path,
+        subtitle: a.description,
+        href: "/api-docs",
+      })),
+  },
+];
 
-const GROUP_LABELS = {
-  users: "Usuários",
-  settings: "Configurações",
-} as const;
+function formatCnpj(cnpj: string) {
+  if (cnpj.length !== 14) return cnpj;
+  return cnpj.replace(
+    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+    "$1.$2.$3/$4-$5"
+  );
+}
+
+function formatDocumento(doc: string) {
+  if (doc.length === 11)
+    return doc.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  if (doc.length === 14) return formatCnpj(doc);
+  return doc;
+}
+
+function truncate(str: string, max: number) {
+  return str.length > max ? str.slice(0, max) + "..." : str;
+}
 
 export function CommandPalette() {
   const router = useRouter();
@@ -130,12 +228,11 @@ export function CommandPalette() {
     }
   }
 
-  const hasResults =
-    !!results && (results.users.length > 0 || results.settings.length > 0);
-
   const totalResults = results
-    ? results.users.length + results.settings.length
+    ? GROUPS.reduce((sum, g) => sum + g.toItems(results).length, 0)
     : 0;
+
+  const hasResults = totalResults > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -158,7 +255,7 @@ export function CommandPalette() {
             <Command.Input
               value={query}
               onValueChange={handleQueryChange}
-              placeholder="Buscar usuários, configurações..."
+              placeholder="Buscar empresas, notas, tomadores, usuários..."
               className="flex-1 bg-transparent py-4 text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
             {query.length > 0 && (
@@ -184,36 +281,38 @@ export function CommandPalette() {
 
             {results && hasResults && (
               <>
-                {(["users", "settings"] as const).map((group) => {
-                  const items = results[group];
+                {GROUPS.map((group) => {
+                  const items = group.toItems(results);
                   if (items.length === 0) return null;
+                  const Icon = group.icon;
 
                   return (
                     <Command.Group
-                      key={group}
+                      key={group.key}
                       heading={
                         <span className="text-xs font-medium text-muted-foreground px-4 py-2 block">
-                          {GROUP_LABELS[group]} ({items.length})
+                          {group.label} ({items.length})
                         </span>
                       }
                     >
-                      {items.map((item) => {
-                        const Icon = ICON_MAP[item.type];
-                        return (
-                          <Command.Item
-                            key={`${item.type}-${item.id}`}
-                            value={`${item.type}-${item.id}`}
-                            onSelect={() => handleSelect(item.href)}
-                            className="flex items-center gap-3 px-4 py-3 cursor-pointer text-sm transition-none data-[selected=true]:bg-accent/50 hover:bg-accent/50"
-                          >
-                            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-foreground truncate">{item.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
-                            </div>
-                          </Command.Item>
-                        );
-                      })}
+                      {items.map((item) => (
+                        <Command.Item
+                          key={`${group.key}-${item.id}`}
+                          value={`${group.key}-${item.id}`}
+                          onSelect={() => handleSelect(item.href)}
+                          className="flex items-center gap-3 px-4 py-3 cursor-pointer text-sm transition-none data-[selected=true]:bg-accent/50 hover:bg-accent/50"
+                        >
+                          <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-foreground truncate">
+                              {item.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {item.subtitle}
+                            </p>
+                          </div>
+                        </Command.Item>
+                      ))}
                     </Command.Group>
                   );
                 })}
@@ -228,9 +327,13 @@ export function CommandPalette() {
                 {totalResults} resultado{totalResults !== 1 ? "s" : ""}
               </span>
               <span>
-                <kbd className="bg-muted/50 border border-border rounded px-1 py-0.5 font-mono text-[10px]">↑↓</kbd>{" "}
+                <kbd className="bg-muted/50 border border-border rounded px-1 py-0.5 font-mono text-[10px]">
+                  ↑↓
+                </kbd>{" "}
                 navegar{" "}
-                <kbd className="bg-muted/50 border border-border rounded px-1 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
+                <kbd className="bg-muted/50 border border-border rounded px-1 py-0.5 font-mono text-[10px]">
+                  ↵
+                </kbd>{" "}
                 abrir
               </span>
             </div>

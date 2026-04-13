@@ -2,25 +2,50 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-interface SearchItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  href: string;
-  type: "user" | "setting";
-}
-
 interface SearchResponse {
-  users: SearchItem[];
-  settings: SearchItem[];
+  empresas: Array<{
+    id: string;
+    razaoSocial: string;
+    cnpj: string;
+    nomeFantasia: string | null;
+  }>;
+  nfse: Array<{
+    id: string;
+    serie: string;
+    numero: string;
+    descricaoServico: string;
+    status: string;
+    tomadorNome: string;
+  }>;
+  tomadores: Array<{
+    id: string;
+    nome: string;
+    documento: string;
+    clienteMeiId: string;
+  }>;
+  usuarios: Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  api: Array<{
+    path: string;
+    description: string;
+  }>;
 }
 
-function normalize(s: string) {
-  return s
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
+const API_ENDPOINTS = [
+  { path: "GET /api/v1/nfse", description: "Listar notas fiscais" },
+  { path: "POST /api/v1/nfse", description: "Criar rascunho de NFS-e" },
+  { path: "GET /api/v1/nfse/{id}", description: "Detalhes de uma NFS-e" },
+  { path: "POST /api/v1/nfse/{id}/emitir", description: "Emitir NFS-e" },
+  { path: "POST /api/v1/nfse/{id}/cancelar", description: "Cancelar NFS-e" },
+  { path: "GET /api/v1/nfse/{id}/xml", description: "Download XML da NFS-e" },
+  { path: "GET /api/v1/clientes", description: "Listar empresas MEI" },
+  { path: "GET /api/v1/clientes/{id}", description: "Detalhes da empresa MEI" },
+  { path: "GET /api/v1/clientes/{id}/faturamento", description: "Faturamento anual MEI" },
+  { path: "GET /api/v1/catalogo/nbs", description: "Buscar códigos de tributação NBS" },
+];
 
 export async function GET(request: Request) {
   try {
@@ -31,55 +56,96 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const rawQuery = searchParams.get("q") ?? "";
-    const trimmed = rawQuery.trim();
+    const query = rawQuery.trim();
 
-    const empty: SearchResponse = { users: [], settings: [] };
+    const empty: SearchResponse = {
+      empresas: [],
+      nfse: [],
+      tomadores: [],
+      usuarios: [],
+      api: [],
+    };
 
-    if (!trimmed || trimmed.length < 2) {
+    if (!query || query.length < 2) {
       return NextResponse.json(empty);
     }
 
-    const query = normalize(trimmed);
+    const [empresas, nfses, tomadores, usuarios] = await Promise.all([
+      // Empresas
+      prisma.clienteMei.findMany({
+        where: {
+          OR: [
+            { razaoSocial: { contains: query, mode: "insensitive" } },
+            { cnpj: { contains: query } },
+            { nomeFantasia: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        take: 5,
+        select: { id: true, razaoSocial: true, cnpj: true, nomeFantasia: true },
+      }),
 
-    // Users: nome/email case-insensitive, apenas ativos
-    const userRows = await prisma.user.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { email: { contains: query, mode: "insensitive" } },
-        ],
-      },
-      select: { id: true, name: true, email: true },
-      take: 10,
-    });
+      // NFS-e
+      prisma.nfse.findMany({
+        where: {
+          OR: [
+            { numero: { contains: query } },
+            { descricaoServico: { contains: query, mode: "insensitive" } },
+            { tomadorNome: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        take: 5,
+        select: {
+          id: true,
+          serie: true,
+          numero: true,
+          descricaoServico: true,
+          status: true,
+          tomadorNome: true,
+        },
+      }),
 
-    const users: SearchItem[] = userRows.map((u) => ({
-      id: u.id,
-      title: u.name,
-      subtitle: u.email,
-      href: "/users",
-      type: "user",
-    }));
+      // Tomadores
+      prisma.tomadorFavorito.findMany({
+        where: {
+          OR: [
+            { nome: { contains: query, mode: "insensitive" } },
+            { documento: { contains: query } },
+          ],
+        },
+        take: 5,
+        select: { id: true, nome: true, documento: true, clienteMeiId: true },
+      }),
 
-    // Global settings: key case-insensitive
-    const settingRows = await prisma.globalSettings.findMany({
-      where: {
-        key: { contains: query, mode: "insensitive" },
-      },
-      select: { id: true, key: true },
-      take: 10,
-    });
+      // Usuários
+      prisma.user.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { email: { contains: query, mode: "insensitive" } },
+          ],
+        },
+        take: 3,
+        select: { id: true, name: true, email: true },
+      }),
+    ]);
 
-    const settings: SearchItem[] = settingRows.map((s) => ({
-      id: s.id,
-      title: s.key,
-      subtitle: "Configuracao global",
-      href: "/settings",
-      type: "setting",
-    }));
+    // API endpoints (filtro local)
+    const lowerQuery = query.toLowerCase();
+    const api = API_ENDPOINTS.filter(
+      (e) =>
+        e.path.toLowerCase().includes(lowerQuery) ||
+        e.description.toLowerCase().includes(lowerQuery)
+    ).slice(0, 3);
 
-    const response: SearchResponse = { users, settings };
+    const response: SearchResponse = {
+      empresas,
+      nfse: nfses,
+      tomadores,
+      usuarios,
+      api,
+    };
+
     return NextResponse.json(response);
   } catch (error) {
     console.error("[api/search]", error);

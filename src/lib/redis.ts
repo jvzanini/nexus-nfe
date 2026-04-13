@@ -12,8 +12,8 @@ function createRedisClient() {
 
   return new Redis(url, {
     maxRetriesPerRequest: null,
-    enableReadyCheck: true,
-    lazyConnect: false,
+    enableReadyCheck: false,
+    lazyConnect: true,
   });
 }
 

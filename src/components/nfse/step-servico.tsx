@@ -140,6 +140,7 @@ export function StepServico({
         <Label className="text-sm font-medium text-foreground/80">
           Código de Tributação Nacional <span className="text-red-500 ml-0.5">*</span>
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">Código da LC 116/2003 que identifica o tipo de serviço prestado</p>
         <Input
           value={codigoTributacao}
           onChange={(e) => setCodigoTributacao(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -157,6 +158,7 @@ export function StepServico({
         <Label className="text-sm font-medium text-foreground/80">
           Descrição do Serviço <span className="text-red-500 ml-0.5">*</span>
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">Detalhe o serviço prestado de forma clara e completa</p>
         <textarea
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
@@ -175,6 +177,7 @@ export function StepServico({
         <Label className="text-sm font-medium text-foreground/80">
           Município de Prestação (Código IBGE) <span className="text-red-500 ml-0.5">*</span>
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">Código IBGE do município onde o serviço foi prestado</p>
         <Input
           value={localIbge}
           onChange={(e) => setLocalIbge(e.target.value.replace(/\D/g, "").slice(0, 7))}

@@ -191,6 +191,7 @@ export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorP
         <Label className="text-sm font-medium text-foreground/80">
           {tipo === "cpf" ? "CPF" : "CNPJ"} <span className="text-red-500 ml-0.5">*</span>
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">CPF ou CNPJ de quem contratou o serviço</p>
         <Input
           value={documento}
           onChange={(e) => handleDocumentoChange(e.target.value)}
@@ -204,6 +205,7 @@ export function StepTomador({ data, clienteMeiId, onNext, onBack }: StepTomadorP
         <Label className="text-sm font-medium text-foreground/80">
           Nome / Razão Social <span className="text-red-500 ml-0.5">*</span>
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">Nome completo ou razão social do tomador</p>
         <Input
           value={nome}
           onChange={(e) => setNome(e.target.value)}

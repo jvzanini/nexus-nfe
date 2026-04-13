@@ -145,6 +145,7 @@ export function StepValores({
         <Label className="text-sm font-medium text-foreground/80">
           Valor do Serviço (R$) <span className="text-red-500 ml-0.5">*</span>
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">Valor total cobrado pelo serviço</p>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
             R$
@@ -187,6 +188,7 @@ export function StepValores({
             <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin" />
           )}
         </Label>
+        <p className="text-xs text-muted-foreground mt-0.5">Percentual do ISS definido pelo município</p>
         <div className="relative">
           <Input
             value={aliquotaStr}

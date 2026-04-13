@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { getNfseDetail, downloadXmlNfse, cancelarNfse, substituirNfse, type NfseDetail } from "@/lib/actions/nfse";
+import { getNfseDetail, downloadXmlNfse, downloadPdfNfse, cancelarNfse, substituirNfse, type NfseDetail } from "@/lib/actions/nfse";
 import {
   Dialog,
   DialogContent,
@@ -116,6 +116,7 @@ export function NfseDetailContent({ id }: { id: string }) {
   const [nfse, setNfse] = useState<NfseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [cancelling, startCancelling] = useTransition();
@@ -159,6 +160,28 @@ export function NfseDetailContent({ id }: { id: string }) {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("XML baixado com sucesso");
+  }
+
+  async function handleDownloadPdf() {
+    if (!nfse) return;
+    setDownloadingPdf(true);
+    const result = await downloadPdfNfse(id);
+    setDownloadingPdf(false);
+    if (!result.success || !result.data) {
+      toast.error(result.error ?? "Erro ao gerar PDF");
+      return;
+    }
+    const blob = new Blob(
+      [Uint8Array.from(atob(result.data.pdf), (c) => c.charCodeAt(0))],
+      { type: "application/pdf" }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = result.data.filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("PDF baixado com sucesso");
   }
 
   async function handleCopyChave() {
@@ -272,6 +295,16 @@ export function NfseDetailContent({ id }: { id: string }) {
               Copiar chave
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 cursor-pointer"
+            disabled={downloadingPdf}
+            onClick={handleDownloadPdf}
+          >
+            <FileText className="h-4 w-4" />
+            {downloadingPdf ? "Gerando…" : "Baixar PDF"}
+          </Button>
           <Button
             size="sm"
             className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"

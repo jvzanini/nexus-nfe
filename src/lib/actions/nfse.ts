@@ -535,6 +535,55 @@ export async function substituirNfse(
 /**
  * Retorna XMLs de NFS-e autorizadas de um período para export. Admin+.
  */
+/**
+ * Gera e retorna o PDF da DANFS-e. Admin+.
+ */
+export async function downloadPdfNfse(
+  id: string
+): Promise<ActionResult<{ pdf: string; filename: string }>> {
+  try {
+    await requireRole("admin");
+
+    const n = await prisma.nfse.findUnique({
+      where: { id },
+      include: { clienteMei: true },
+    });
+
+    if (!n) return { success: false, error: "NFS-e não encontrada" };
+
+    const { generateDanfsePdf } = await import("@/lib/nfse/pdf-generator");
+
+    const pdf = generateDanfsePdf({
+      numero: n.numero,
+      serie: n.serie,
+      chaveAcesso: n.chaveAcesso,
+      dataEmissao: n.dataEmissao.toLocaleDateString("pt-BR"),
+      prestadorCnpj: n.clienteMei.cnpj,
+      prestadorNome: n.clienteMei.razaoSocial,
+      prestadorEndereco: `${n.clienteMei.logradouro}, ${n.clienteMei.numero} - ${n.clienteMei.bairro}, ${n.clienteMei.uf}`,
+      tomadorDocumento: n.tomadorDocumento,
+      tomadorNome: n.tomadorNome,
+      tomadorEmail: n.tomadorEmail,
+      codigoServico: n.codigoServico,
+      descricaoServico: n.descricaoServico,
+      valorServico: Number(n.valorServico),
+      aliquotaIss: Number(n.aliquotaIss),
+      valorIss: Number(n.valorIss),
+    });
+
+    return {
+      success: true,
+      data: {
+        pdf: pdf.toString("base64"),
+        filename: `nfse-${n.serie}-${n.numero}.pdf`,
+      },
+    };
+  } catch (error) {
+    console.error("[nfse.downloadPdfNfse]", error);
+    return { success: false, error: "Erro ao gerar PDF" };
+  }
+}
+
 export async function exportarXmlsPeriodo(
   clienteMeiId: string,
   dataInicio: string,

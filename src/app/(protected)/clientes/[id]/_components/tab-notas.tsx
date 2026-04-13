@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import {
   listarNfses,
   downloadXmlNfse,
+  downloadPdfNfse,
   type NfseListItem,
 } from "@/lib/actions/nfse";
 import { format } from "date-fns";
@@ -73,6 +74,26 @@ export function TabNotas({ empresaId }: TabNotasProps) {
         URL.revokeObjectURL(url);
       } else {
         toast.error(result.error || "Erro ao baixar XML");
+      }
+    });
+  }
+
+  function handleDownloadPdf(id: string) {
+    startDownloading(async () => {
+      const result = await downloadPdfNfse(id);
+      if (result.success && result.data) {
+        const blob = new Blob(
+          [Uint8Array.from(atob(result.data.pdf), (c) => c.charCodeAt(0))],
+          { type: "application/pdf" }
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = result.data.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        toast.error(result.error || "Erro ao gerar PDF");
       }
     });
   }
@@ -183,6 +204,16 @@ export function TabNotas({ empresaId }: TabNotasProps) {
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
                       </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleDownloadPdf(n.id)}
+                        disabled={downloading}
+                        className="text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Baixar PDF"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </Button>
                       {(n.status === "autorizada" || n.status === "processando") && (
                         <Button
                           variant="ghost"
@@ -190,6 +221,7 @@ export function TabNotas({ empresaId }: TabNotasProps) {
                           onClick={() => handleDownload(n.id)}
                           disabled={downloading}
                           className="text-muted-foreground hover:text-foreground cursor-pointer"
+                          title="Baixar XML"
                         >
                           <Download className="h-3.5 w-3.5" />
                         </Button>

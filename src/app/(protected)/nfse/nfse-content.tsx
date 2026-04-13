@@ -208,6 +208,7 @@ export function NfseContent() {
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
+  const [filterTomador, setFilterTomador] = useState("");
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<"none" | "empresa" | "tomador">("none");
 
@@ -240,12 +241,16 @@ export function NfseContent() {
     loadNfses();
   }, [filterStatus]);
 
-  const filteredNfses = filterSearch
-    ? nfses.filter((n) =>
-        [n.clienteMeiRazaoSocial, n.tomadorNome, n.tomadorDocumento, n.descricaoServico, `${n.serie}-${n.numero}`]
-          .some((field) => field?.toLowerCase().includes(filterSearch.toLowerCase()))
-      )
-    : nfses;
+  const uniqueTomadores = [...new Set(nfses.map((n) => n.tomadorNome))].sort();
+
+  const filteredNfses = nfses.filter((n) => {
+    if (filterTomador && n.tomadorNome !== filterTomador) return false;
+    if (filterSearch) {
+      return [n.clienteMeiRazaoSocial, n.tomadorNome, n.tomadorDocumento, n.descricaoServico, `${n.serie}-${n.numero}`]
+        .some((field) => field?.toLowerCase().includes(filterSearch.toLowerCase()));
+    }
+    return true;
+  });
 
   const grouped = groupNfses(filteredNfses, groupBy);
 
@@ -319,6 +324,16 @@ export function NfseContent() {
             </button>
           ))}
         </div>
+        <select
+          value={filterTomador}
+          onChange={(e) => setFilterTomador(e.target.value)}
+          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground cursor-pointer focus:border-violet-500 focus:outline-none"
+        >
+          <option value="">Todos os tomadores</option>
+          {uniqueTomadores.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
         {/* Agrupamento */}
         <div className="flex items-center gap-1 border border-border rounded-lg p-0.5">
           <button

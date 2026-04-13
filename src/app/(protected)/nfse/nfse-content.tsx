@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Plus, Loader2, Search, Filter, X } from "lucide-react";
+import { FileText, Plus, Loader2, Search, Filter, X, CircleHelp } from "lucide-react";
+import { TutorialDialog } from "@/components/nfse/tutorial-dialog";
 import { toast } from "sonner";
 import { listarNfsesComFiltros, type NfseFilters, type NfseListItem } from "@/lib/actions/nfse";
 import { format } from "date-fns";
@@ -108,6 +109,7 @@ export function NfseContent() {
   const router = useRouter();
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -170,12 +172,23 @@ export function NfseContent() {
             </p>
           </div>
         </div>
-        <Link href="/nfse/nova">
-          <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200" title="Ctrl+N">
-            <Plus className="h-4 w-4" />
-            Nova NFS-e
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setTutorialOpen(true)}
+            className="cursor-pointer"
+            title="Como funciona?"
+          >
+            <CircleHelp className="h-4 w-4" />
           </Button>
-        </Link>
+          <Link href="/nfse/nova">
+            <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200" title="Ctrl+N">
+              <Plus className="h-4 w-4" />
+              Nova NFS-e
+            </Button>
+          </Link>
+        </div>
       </motion.div>
 
       {/* Filtros */}
@@ -297,6 +310,7 @@ export function NfseContent() {
           </Table>
         )}
       </motion.div>
+      <TutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </motion.div>
   );
 }

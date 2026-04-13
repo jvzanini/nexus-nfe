@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Check, CircleHelp } from "lucide-react";
+import { TutorialDialog } from "@/components/nfse/tutorial-dialog";
 import { getNfseDetail } from "@/lib/actions/nfse";
 import { StepCliente } from "@/components/nfse/step-cliente";
 import { StepServico } from "@/components/nfse/step-servico";
@@ -53,6 +54,7 @@ export function NovaNfseForm() {
   const reemitirId = searchParams.get("reemitir");
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<NfseFormData>({});
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   useEffect(() => {
     if (!reemitirId) return;
@@ -120,22 +122,33 @@ export function NovaNfseForm() {
       className="space-y-6"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center gap-3">
-        <Link href="/nfse">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Nova NFS-e</h1>
-          <p className="text-sm text-muted-foreground">
-            Preencha os dados para emitir uma nota fiscal de serviço
-          </p>
+      <motion.div variants={itemVariants} className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/nfse">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Nova NFS-e</h1>
+            <p className="text-sm text-muted-foreground">
+              Preencha os dados para emitir uma nota fiscal de serviço
+            </p>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setTutorialOpen(true)}
+          className="cursor-pointer"
+          title="Como funciona?"
+        >
+          <CircleHelp className="h-4 w-4" />
+        </Button>
       </motion.div>
 
       {/* Step indicator */}
@@ -232,6 +245,8 @@ export function NovaNfseForm() {
           />
         )}
       </motion.div>
+
+      <TutorialDialog open={tutorialOpen} onOpenChange={setTutorialOpen} />
     </motion.div>
   );
 }

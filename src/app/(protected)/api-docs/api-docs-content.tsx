@@ -376,7 +376,7 @@ function CodeBlock({
   highlight = false,
   highlightAs,
 }: {
-  code: Record<Language, string> | string;
+  code: Partial<Record<Language, string>> | string;
   languages?: Language[];
   highlight?: boolean;
   highlightAs?: "json" | "code";
@@ -386,7 +386,7 @@ function CodeBlock({
   const [activeLang, setActiveLang] = useState<Language>(langs[0] ?? "curl");
   const [copied, setCopied] = useState(false);
 
-  const currentCode = isMulti ? code[activeLang] : code;
+  const currentCode = isMulti ? (code[activeLang] ?? "") : code;
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(currentCode);

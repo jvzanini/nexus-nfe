@@ -17,6 +17,7 @@ import { checkCertificateExpiration } from "../lib/certificates/check-expiration
 import { dispatchNfseEvent, type NfsePayload } from "../lib/webhooks/dispatch";
 import { handleEmitNfse } from "./handlers/emit-nfse";
 import { handleReconcileNfse } from "./handlers/reconcile-nfse";
+import { tickAgendamentos } from "../lib/nfse-agendamentos/executor";
 
 type NfeJobData = {
   nfseId: string;
@@ -28,7 +29,11 @@ type OutboxJobData = {
 };
 
 type CronJobData = {
-  task: "check-cert-expiration" | "reconcile-nfse" | "dispatch-outbox";
+  task:
+    | "check-cert-expiration"
+    | "reconcile-nfse"
+    | "dispatch-outbox"
+    | "agendamentos-tick";
 };
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -196,6 +201,15 @@ const cronWorker = new Worker<CronJobData>(
         }
         return result;
       }
+      case "agendamentos-tick": {
+        const result = await tickAgendamentos();
+        if (result.processados > 0) {
+          console.log(
+            `[cron] agendamentos-tick processados=${result.processados} sucesso=${result.sucesso} erro=${result.erro}`
+          );
+        }
+        return result;
+      }
       default:
         console.warn(`[cron] unknown task: ${JSON.stringify(job.data)}`);
         return { ok: false };
@@ -242,6 +256,16 @@ async function setupSchedulers() {
       }
     );
     console.log("[cron] scheduled: dispatch-outbox-30s @ every 30s");
+    await cronQueue.upsertJobScheduler(
+      "agendamentos-tick-5min",
+      { pattern: "*/5 * * * *" },
+      {
+        name: "agendamentos-tick",
+        data: { task: "agendamentos-tick" },
+        opts: { removeOnComplete: 10, removeOnFail: 10 },
+      }
+    );
+    console.log("[cron] scheduled: agendamentos-tick-5min @ every 5 min");
   } catch (err) {
     console.error("[cron] failed to setup schedulers", err);
   }

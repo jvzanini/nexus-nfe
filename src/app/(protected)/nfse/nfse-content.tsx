@@ -400,6 +400,16 @@ export function NfseContent() {
           >
             <CircleHelp className="h-4 w-4" />
           </Button>
+          <Link href="/nfse/agendamentos">
+            <Button
+              variant="outline"
+              className="gap-2 cursor-pointer transition-all duration-200"
+              title="Emissão automática recorrente"
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">Agendamentos</span>
+            </Button>
+          </Link>
           <Link href="/nfse/lote">
             <Button
               variant="outline"

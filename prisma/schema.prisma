@@ -249,6 +249,7 @@ model ClienteMei {
   gruposEmpresariais  GrupoEmpresarial[]
   webhookEndpoints    WebhookEndpoint[]
   lotes               NfseLote[]
+  agendamentos        NfseAgendamento[]
 
   @@map("clientes_mei")
 }
@@ -517,4 +518,77 @@ model NfseLoteItem {
   @@index([loteId, linhaCsv], name: "idx_lote_item_ordem")
   @@index([status], name: "idx_lote_item_status")
   @@map("nfse_lote_itens")
+}
+
+// ============================================================
+// DOMÍNIO — Agendamento/Recorrência de NFS-e (Fase 19)
+// ============================================================
+
+enum AgendamentoStatus {
+  ativo
+  pausado
+  encerrado
+}
+
+enum AgendamentoFrequencia {
+  unica
+  mensal
+  bimestral
+  trimestral
+  semestral
+  anual
+}
+
+model NfseAgendamento {
+  id                       String                @id @default(uuid()) @db.Uuid
+  clienteMeiId             String                @map("cliente_mei_id") @db.Uuid
+  status                   AgendamentoStatus     @default(ativo)
+  frequencia               AgendamentoFrequencia
+  nome                     String
+  proximaExecucao          DateTime              @map("proxima_execucao")
+  diaMes                   Int?                  @map("dia_mes")
+  dataFinal                DateTime?             @map("data_final") @db.Date
+  totalExecucoes           Int                   @default(0) @map("total_execucoes")
+  maxExecucoes             Int?                  @map("max_execucoes")
+
+  codigoTributacaoNacional String                @map("codigo_tributacao_nacional")
+  codigoNbs                String?               @map("codigo_nbs")
+  localPrestacaoIbge       String                @map("local_prestacao_ibge")
+  aliquotaIss              Decimal               @map("aliquota_iss") @db.Decimal(5, 2)
+  descricaoServico         String                @map("descricao_servico") @db.Text
+  valorServico             Decimal               @map("valor_servico") @db.Decimal(15, 2)
+  tributacaoIssqn          Int                   @default(1) @map("tributacao_issqn")
+
+  tomadorTipo      String  @map("tomador_tipo")
+  tomadorDocumento String  @map("tomador_documento")
+  tomadorNome      String  @map("tomador_nome")
+  tomadorEmail     String? @map("tomador_email")
+  tomadorEndereco  Json?   @map("tomador_endereco") @db.JsonB
+
+  createdById String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  lastRunAt   DateTime? @map("last_run_at")
+  lastError   String?   @map("last_error") @db.Text
+
+  clienteMei ClienteMei                @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+  execucoes  NfseAgendamentoExecucao[]
+
+  @@index([status, proximaExecucao], name: "idx_agendamento_proxima")
+  @@index([clienteMeiId, createdAt(sort: Desc)], name: "idx_agendamento_cliente")
+  @@map("nfse_agendamentos")
+}
+
+model NfseAgendamentoExecucao {
+  id            String   @id @default(uuid()) @db.Uuid
+  agendamentoId String   @map("agendamento_id") @db.Uuid
+  nfseId        String?  @map("nfse_id") @db.Uuid
+  executadoEm   DateTime @default(now()) @map("executado_em")
+  sucesso       Boolean  @default(false)
+  erro          String?  @db.Text
+
+  agendamento NfseAgendamento @relation(fields: [agendamentoId], references: [id], onDelete: Cascade)
+
+  @@index([agendamentoId, executadoEm(sort: Desc)], name: "idx_execucao_agendamento")
+  @@map("nfse_agendamento_execucoes")
 }

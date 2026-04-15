@@ -8,6 +8,7 @@ import { authorizeCredentials } from "@/lib/auth-helpers";
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
+  otp: z.string().optional(),
 });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -18,6 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
+        otp: { label: "Código 2FA", type: "text" },
       },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);
@@ -26,7 +28,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const user = await authorizeCredentials(parsed.data, "0.0.0.0");
           return user;
-        } catch {
+        } catch (err) {
+          if (err instanceof Error && err.message === "2FA_REQUIRED") {
+            // Re-throw para que o client consiga identificar
+            throw err;
+          }
           return null;
         }
       },

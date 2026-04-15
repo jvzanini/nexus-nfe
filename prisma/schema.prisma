@@ -84,6 +84,10 @@ model User {
   avatarUrl    String?      @map("avatar_url")
   theme        Theme        @default(dark)
   emailNotifications Boolean @default(true) @map("email_notifications")
+  twoFactorEnabled    Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret     String?   @map("two_factor_secret")
+  twoFactorBackup     String?   @map("two_factor_backup")
+  twoFactorVerifiedAt DateTime? @map("two_factor_verified_at")
   isActive     Boolean      @default(true) @map("is_active")
   invitedById  String?      @map("invited_by") @db.Uuid
   createdAt    DateTime     @default(now()) @map("created_at")

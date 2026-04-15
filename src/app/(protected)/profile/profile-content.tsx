@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useSession } from "next-auth/react";
+import { TwoFactorCard } from "@/components/profile/two-factor-card";
 import {
   updateProfile,
   updateAvatar,
@@ -475,6 +476,11 @@ export function ProfileContent({ initial }: ProfileContentProps) {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* 2FA */}
+      <motion.div variants={itemVariants}>
+        <TwoFactorCard />
       </motion.div>
 
       {/* Tema */}

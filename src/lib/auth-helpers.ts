@@ -8,6 +8,7 @@ type PlatformRole = "super_admin" | "admin" | "manager" | "viewer";
 interface Credentials {
   email: string;
   password: string;
+  otp?: string;
 }
 
 interface AuthUser {
@@ -93,6 +94,9 @@ export async function authorizeCredentials(
       isActive: true,
       avatarUrl: true,
       theme: true,
+      twoFactorEnabled: true,
+      twoFactorSecret: true,
+      twoFactorBackup: true,
     },
   });
 
@@ -103,6 +107,33 @@ export async function authorizeCredentials(
   const isPasswordValid = await verifyPassword(password, user.password);
   if (!isPasswordValid) {
     return null;
+  }
+
+  if (user.twoFactorEnabled && user.twoFactorSecret) {
+    const { otp } = credentials;
+    if (!otp) {
+      throw new Error("2FA_REQUIRED");
+    }
+    const { verificarTotp, desempacotarSecret, consumirBackupCode } =
+      await import("@/lib/two-factor/totp");
+    const secret = desempacotarSecret(user.twoFactorSecret);
+    const totpOk = verificarTotp(otp, secret);
+    if (!totpOk) {
+      // tenta backup code
+      if (user.twoFactorBackup) {
+        const novo = consumirBackupCode(user.twoFactorBackup, otp);
+        if (novo) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { twoFactorBackup: novo },
+          });
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
   }
 
   return {

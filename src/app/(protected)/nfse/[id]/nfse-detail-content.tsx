@@ -190,6 +190,13 @@ export function NfseDetailContent({ id }: { id: string }) {
     toast.success("Chave copiada");
   }
 
+  async function handleCopyPublicLink() {
+    if (!nfse?.chaveAcesso) return;
+    const url = `${window.location.origin}/v/${nfse.chaveAcesso}`;
+    await navigator.clipboard.writeText(url);
+    toast.success("Link público copiado");
+  }
+
   function handleCancelar() {
     startCancelling(async () => {
       const result = await cancelarNfse(id, cancelMotivo);
@@ -293,6 +300,12 @@ export function NfseDetailContent({ id }: { id: string }) {
             <Button variant="outline" size="sm" className="gap-2 cursor-pointer" onClick={handleCopyChave}>
               <Copy className="h-4 w-4" />
               Copiar chave
+            </Button>
+          )}
+          {nfse.chaveAcesso && nfse.status === "autorizada" && (
+            <Button variant="outline" size="sm" className="gap-2 cursor-pointer" onClick={handleCopyPublicLink}>
+              <Copy className="h-4 w-4" />
+              Link público
             </Button>
           )}
           <Button

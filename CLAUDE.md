@@ -175,6 +175,7 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 - ✅ Fase 14 — Export lote ZIP (XMLs autorizados + PDFs DANFS-e por período em `/relatorios`) — 2026-04-15
 - ✅ Fase 15 — Gestão self-service de API Keys em `/settings` (criar/revogar, chave exibida uma única vez) — 2026-04-15
 - ✅ Fase 16 — API REST de webhooks (GET/POST `/api/v1/empresas/[id]/webhooks`, PUT/DELETE `/[webhookId]`, rotação de secret) — 2026-04-15
+- ✅ Fase 17 — Portal público de NFS-e (`/v/[chave]` sem login + `/api/public/nfse/[chave]/pdf`, botão "Link público" na tela de detalhe) — 2026-04-15
 
 **API REST v1 (~26 endpoints):**
 - ✅ Auth por API Key (X-API-Key)

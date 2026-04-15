@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Loader2, Plus, Trash2, Users, ChevronUp, Search, Pencil } from "lucide-react";
+import { Loader2, Plus, Trash2, Users, ChevronUp, Search, Pencil, Upload, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,10 @@ import {
   excluirTomadorFavorito,
   salvarTomadorFavorito,
   atualizarTomadorFavorito,
+  previewImportTomadoresCsv,
+  importarTomadoresCsv,
   type TomadorFavoritoItem,
+  type ImportCsvPreview,
 } from "@/lib/actions/tomadores-favoritos";
 import {
   listarGrupos,
@@ -101,6 +104,53 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
   const [editEmail, setEditEmail] = useState("");
   const [editGrupoId, setEditGrupoId] = useState("");
   const [editSaving, startEditSaving] = useTransition();
+
+  // Import CSV
+  const [importOpen, setImportOpen] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [preview, setPreview] = useState<ImportCsvPreview | null>(null);
+  const [importing, startImporting] = useTransition();
+
+  function resetImport() {
+    setImportOpen(false);
+    setCsvText("");
+    setPreview(null);
+  }
+
+  async function handleFileUpload(file: File) {
+    const text = await file.text();
+    setCsvText(text);
+  }
+
+  function handlePreview() {
+    if (!csvText.trim()) {
+      toast.error("Cole ou faça upload de um CSV");
+      return;
+    }
+    startImporting(async () => {
+      const result = await previewImportTomadoresCsv(empresaId, csvText);
+      if (result.success && result.data) {
+        setPreview(result.data);
+      } else {
+        toast.error(result.error || "Erro ao analisar CSV");
+      }
+    });
+  }
+
+  function handleImport() {
+    startImporting(async () => {
+      const result = await importarTomadoresCsv(empresaId, csvText);
+      if (result.success && result.data) {
+        toast.success(
+          `Importado: ${result.data.criados} novos, ${result.data.atualizados} atualizados, ${result.data.ignorados} ignorados`
+        );
+        resetImport();
+        await load();
+      } else {
+        toast.error(result.error || "Erro ao importar");
+      }
+    });
+  }
 
   async function load() {
     const [tomResult, grupoResult] = await Promise.all([
@@ -272,18 +322,29 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
             {tomadores.length} {tomadores.length === 1 ? "tomador" : "tomadores"}
           </h3>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowForm(!showForm)}
-          className="gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white"
-        >
-          {showForm ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          Novo Tomador
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="gap-2 cursor-pointer"
+          >
+            <Upload className="h-4 w-4" />
+            Importar CSV
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowForm(!showForm)}
+            className="gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white"
+          >
+            {showForm ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Novo Tomador
+          </Button>
+        </div>
       </div>
 
       {/* Form colapsavel */}
@@ -565,6 +626,125 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
               Salvar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import CSV dialog */}
+      <Dialog open={importOpen} onOpenChange={(open) => !open && resetImport()}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Importar tomadores via CSV</DialogTitle>
+          </DialogHeader>
+          {!preview ? (
+            <div className="space-y-4 py-2">
+              <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 leading-relaxed">
+                <div className="font-medium text-foreground mb-1">Formato esperado</div>
+                CSV (separador <code>;</code> ou <code>,</code>) com cabeçalho.
+                Colunas: <code>documento</code> (obrigatório, CPF ou CNPJ),{" "}
+                <code>nome</code> (obrigatório), <code>email</code> (opcional).
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground/80">Arquivo CSV</Label>
+                <Input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleFileUpload(f);
+                  }}
+                  className="bg-muted/50 border-border text-foreground"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground/80">
+                  Ou cole o conteúdo CSV
+                </Label>
+                <textarea
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  placeholder={`documento;nome;email\n12345678901;Joao Silva;joao@x.com`}
+                  className="w-full h-40 rounded-md border border-border bg-muted/50 text-foreground text-sm font-mono p-3 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-500"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={resetImport} disabled={importing} className="cursor-pointer">
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handlePreview}
+                  disabled={importing || !csvText.trim()}
+                  className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+                >
+                  {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                  Analisar
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                <div className="rounded-lg border border-border bg-muted/50 p-3">
+                  <div className="text-xs text-muted-foreground">Total</div>
+                  <div className="text-lg font-semibold text-foreground">{preview.totalLinhas}</div>
+                </div>
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
+                  <div className="text-xs text-emerald-400">Válidos</div>
+                  <div className="text-lg font-semibold text-emerald-300">{preview.validos.length}</div>
+                </div>
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                  <div className="text-xs text-amber-400">Já existem</div>
+                  <div className="text-lg font-semibold text-amber-300">{preview.jaExistentes}</div>
+                </div>
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                  <div className="text-xs text-red-400">Inválidos</div>
+                  <div className="text-lg font-semibold text-red-300">{preview.invalidos.length}</div>
+                </div>
+              </div>
+
+              {preview.invalidos.length > 0 && (
+                <div className="rounded-lg border border-border bg-card max-h-48 overflow-y-auto">
+                  <div className="text-xs font-medium text-foreground/80 px-3 py-2 border-b border-border bg-muted/30">
+                    Linhas inválidas (não serão importadas)
+                  </div>
+                  <div className="divide-y divide-border">
+                    {preview.invalidos.slice(0, 50).map((iv) => (
+                      <div key={iv.linha} className="px-3 py-2 text-xs">
+                        <div className="text-muted-foreground">
+                          Linha {iv.linha} — <span className="text-red-400">{iv.motivo}</span>
+                        </div>
+                        <div className="font-mono text-foreground/60 truncate">{iv.raw}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {preview.jaExistentes > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  {preview.jaExistentes} tomadores já existem e terão nome/email atualizados.
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" size="sm" onClick={() => setPreview(null)} disabled={importing} className="cursor-pointer">
+                  Voltar
+                </Button>
+                <Button variant="outline" size="sm" onClick={resetImport} disabled={importing} className="cursor-pointer">
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleImport}
+                  disabled={importing || preview.validos.length === 0}
+                  className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+                >
+                  {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Importar {preview.validos.length}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

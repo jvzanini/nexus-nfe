@@ -8,6 +8,7 @@ import {
   Settings,
   Building2,
   Code2,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Empresas", href: "/clientes", icon: Building2 },
   { label: "Notas Fiscais", href: "/nfse", icon: FileText },
+  { label: "Relatórios", href: "/relatorios", icon: BarChart3, allowedRoles: ["super_admin", "admin"] },
   { label: "API", href: "/api-docs", icon: Code2 },
 ];
 
@@ -45,10 +47,13 @@ export const RESTRICTED_NAV_ITEMS: NavItem[] = [
 
 /** Retorna todos os itens de navegação visíveis para o role */
 export function getNavItems(platformRole: string): NavItem[] {
+  const main = MAIN_NAV_ITEMS.filter(
+    (item) => !item.allowedRoles || item.allowedRoles.includes(platformRole)
+  );
   const restricted = RESTRICTED_NAV_ITEMS.filter(
     (item) => !item.allowedRoles || item.allowedRoles.includes(platformRole)
   );
-  return [...MAIN_NAV_ITEMS, ...restricted];
+  return [...main, ...restricted];
 }
 
 /**

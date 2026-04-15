@@ -14,6 +14,7 @@ import IORedis from "ioredis";
 
 import { prisma } from "../lib/prisma";
 import { checkCertificateExpiration } from "../lib/certificates/check-expiration";
+import { dispatchNfseEvent, type NfsePayload } from "../lib/webhooks/dispatch";
 import { handleEmitNfse } from "./handlers/emit-nfse";
 import { handleReconcileNfse } from "./handlers/reconcile-nfse";
 
@@ -27,7 +28,7 @@ type OutboxJobData = {
 };
 
 type CronJobData = {
-  task: "check-cert-expiration" | "reconcile-nfse";
+  task: "check-cert-expiration" | "reconcile-nfse" | "dispatch-outbox";
 };
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -95,10 +96,20 @@ const outboxWorker = new Worker<OutboxJobData>(
     }
 
     try {
-      // Fase 2: publicar no destino real (webhook, broker, etc).
       console.log(
         `[outbox] publishing event ${eventId} type=${event.eventType} aggregate=${event.aggregateId}`
       );
+
+      // Dispatch para webhooks se for evento de NFS-e
+      if (event.eventType.startsWith("nfse.")) {
+        const payload = event.payload as unknown as NfsePayload;
+        if (payload && payload.clienteMeiId) {
+          const result = await dispatchNfseEvent(payload);
+          console.log(
+            `[outbox] webhooks ${event.eventType} attempted=${result.attempted} ok=${result.succeeded} fail=${result.failed}`
+          );
+        }
+      }
 
       await prisma.outboxEvent.update({
         where: { id: eventId },
@@ -134,6 +145,31 @@ outboxWorker.on("failed", (job, err) => {
 // ------------------------------------------------------------
 
 const cronQueue = new Queue<CronJobData>("cron", { connection });
+const outboxQueueInternal = new Queue<OutboxJobData>("outbox", { connection });
+
+async function dispatchPendingOutboxEventsInternal() {
+  const threshold = new Date(Date.now() - 5_000); // 5s grace
+  const pending = await prisma.outboxEvent.findMany({
+    where: { status: "pending", createdAt: { lt: threshold } },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    select: { id: true },
+  });
+  let requeued = 0;
+  for (const ev of pending) {
+    try {
+      await outboxQueueInternal.add(
+        "publish",
+        { eventId: ev.id },
+        { jobId: `${ev.id}-retry-${Date.now()}` }
+      );
+      requeued++;
+    } catch (err) {
+      console.error("[cron] failed to requeue outbox event", ev.id, err);
+    }
+  }
+  return { requeued };
+}
 
 const cronWorker = new Worker<CronJobData>(
   "cron",
@@ -151,6 +187,13 @@ const cronWorker = new Worker<CronJobData>(
         console.log(
           `[cron] reconcile checked=${result.checked} recovered=${result.recovered} failed=${result.failed}`
         );
+        return result;
+      }
+      case "dispatch-outbox": {
+        const result = await dispatchPendingOutboxEventsInternal();
+        if (result.requeued > 0) {
+          console.log(`[cron] dispatch-outbox requeued=${result.requeued}`);
+        }
         return result;
       }
       default:
@@ -189,6 +232,16 @@ async function setupSchedulers() {
       }
     );
     console.log("[cron] scheduled: reconcile-nfse-5min @ every 5 min");
+    await cronQueue.upsertJobScheduler(
+      "dispatch-outbox-30s",
+      { every: 30_000 },
+      {
+        name: "dispatch-outbox",
+        data: { task: "dispatch-outbox" },
+        opts: { removeOnComplete: 5, removeOnFail: 10 },
+      }
+    );
+    console.log("[cron] scheduled: dispatch-outbox-30s @ every 30s");
   } catch (err) {
     console.error("[cron] failed to setup schedulers", err);
   }
@@ -209,6 +262,7 @@ async function shutdown(signal: string) {
       cronWorker.close(),
     ]);
     await cronQueue.close();
+    await outboxQueueInternal.close();
     await connection.quit();
     await prisma.$disconnect();
   } catch (err) {

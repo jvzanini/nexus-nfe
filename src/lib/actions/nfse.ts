@@ -512,13 +512,37 @@ export async function cancelarNfse(
 
     // TODO Fase 3: POST /nfse/{chave}/eventos com tipo cancelamento via SefinClient
 
-    await prisma.nfse.update({
+    const updated = await prisma.nfse.update({
       where: { id: nfseId },
       data: {
         status: "cancelada",
         mensagemResposta: `Cancelada: ${motivo.trim()}`,
       },
     });
+
+    try {
+      const { publishEvent } = await import("@/lib/outbox");
+      await publishEvent({
+        aggregateId: updated.id,
+        eventType: "nfse.cancelada",
+        payload: {
+          event: "nfse.cancelada",
+          nfseId: updated.id,
+          clienteMeiId: updated.clienteMeiId,
+          status: updated.status,
+          chaveAcesso: updated.chaveAcesso,
+          numeroNfse: updated.numeroNfse,
+          serie: updated.serie,
+          numero: updated.numero,
+          valorServico: updated.valorServico.toString(),
+          tomadorNome: updated.tomadorNome,
+          tomadorDocumento: updated.tomadorDocumento,
+          occurredAt: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      console.error("[nfse.cancelarNfse] outbox enqueue failed", err);
+    }
 
     revalidatePath("/nfse");
     revalidatePath(`/nfse/${nfseId}`);

@@ -247,8 +247,30 @@ model ClienteMei {
   faturamentoAnual    FaturamentoAnual[]
   memberships         EmpresaMembership[]
   gruposEmpresariais  GrupoEmpresarial[]
+  webhookEndpoints    WebhookEndpoint[]
 
   @@map("clientes_mei")
+}
+
+model WebhookEndpoint {
+  id             String    @id @default(uuid()) @db.Uuid
+  clienteMeiId   String    @map("cliente_mei_id") @db.Uuid
+  url            String
+  secret         String
+  events         String[]
+  isActive       Boolean   @default(true) @map("is_active")
+  lastStatus     String?   @map("last_status")
+  lastAttemptAt  DateTime? @map("last_attempt_at")
+  lastError      String?   @map("last_error") @db.Text
+  failureCount   Int       @default(0) @map("failure_count")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdById    String    @map("created_by") @db.Uuid
+
+  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Cascade)
+
+  @@index([clienteMeiId])
+  @@map("webhook_endpoints")
 }
 
 model CertificadoDigital {

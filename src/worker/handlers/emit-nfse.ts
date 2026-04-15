@@ -8,6 +8,47 @@ import { SefinClient } from "../../lib/nfse/sefin-client";
 import type { Dps } from "../../lib/nfse/types";
 import { sendNotificationEmail } from "../../lib/notifications-email";
 
+async function enqueueWebhookEvent(
+  event: "nfse.autorizada" | "nfse.rejeitada" | "nfse.cancelada",
+  nfse: {
+    id: string;
+    clienteMeiId: string;
+    serie: string;
+    numero: string;
+    status: string;
+    chaveAcesso: string | null;
+    numeroNfse: string | null;
+    valorServico: { toString(): string };
+    tomadorNome: string;
+    tomadorDocumento: string;
+  }
+) {
+  try {
+    await prisma.outboxEvent.create({
+      data: {
+        aggregateId: nfse.id,
+        eventType: event,
+        payload: {
+          event,
+          nfseId: nfse.id,
+          clienteMeiId: nfse.clienteMeiId,
+          status: nfse.status,
+          chaveAcesso: nfse.chaveAcesso,
+          numeroNfse: nfse.numeroNfse,
+          serie: nfse.serie,
+          numero: nfse.numero,
+          valorServico: nfse.valorServico.toString(),
+          tomadorNome: nfse.tomadorNome,
+          tomadorDocumento: nfse.tomadorDocumento,
+          occurredAt: new Date().toISOString(),
+        },
+      },
+    });
+  } catch (err) {
+    console.error(`[emit-nfse] enqueueWebhookEvent ${event} failed`, err);
+  }
+}
+
 const prisma = new PrismaClient();
 
 export interface EmitNfseJobData {
@@ -120,7 +161,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
     const result = await sefin.submitNfse(submission.dpsXmlGZipB64);
 
     if (result.success) {
-      await prisma.nfse.update({
+      const updated = await prisma.nfse.update({
         where: { id: nfseId },
         data: {
           status: "autorizada",
@@ -132,6 +173,18 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
           codigoResposta: "200",
           mensagemResposta: "Autorizada",
         },
+      });
+      await enqueueWebhookEvent("nfse.autorizada", {
+        id: updated.id,
+        clienteMeiId: updated.clienteMeiId,
+        serie: updated.serie,
+        numero: updated.numero,
+        status: updated.status,
+        chaveAcesso: updated.chaveAcesso,
+        numeroNfse: updated.numeroNfse,
+        valorServico: updated.valorServico,
+        tomadorNome: updated.tomadorNome,
+        tomadorDocumento: updated.tomadorDocumento,
       });
       return { ok: true, chaveAcesso: result.chaveAcesso };
     } else {
@@ -146,6 +199,18 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
         },
       });
       await notifyNfseIssue(nfse, "rejeitada", result.mensagem ?? "Rejeitada sem mensagem");
+      await enqueueWebhookEvent("nfse.rejeitada", {
+        id: nfse.id,
+        clienteMeiId: nfse.clienteMeiId,
+        serie: nfse.serie,
+        numero: nfse.numero,
+        status: "rejeitada",
+        chaveAcesso: null,
+        numeroNfse: null,
+        valorServico: nfse.valorServico,
+        tomadorNome: nfse.tomadorNome,
+        tomadorDocumento: nfse.tomadorDocumento,
+      });
       return { ok: false };
     }
   } catch (error) {

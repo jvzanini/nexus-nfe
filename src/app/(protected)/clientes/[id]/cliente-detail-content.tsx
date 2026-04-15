@@ -11,6 +11,7 @@ import { TabCertificado } from "./_components/tab-certificado";
 import { TabTomadores } from "./_components/tab-tomadores";
 import { TabNotas } from "./_components/tab-notas";
 import { TabMembros } from "./_components/tab-membros";
+import { TabWebhooks } from "./_components/tab-webhooks";
 import type { ClienteMeiDetail } from "@/lib/actions/clientes-mei";
 import type { CertificadoListItem } from "@/lib/actions/certificados";
 
@@ -25,6 +26,7 @@ const VALID_TABS = [
   "tomadores",
   "notas",
   "membros",
+  "webhooks",
 ];
 
 export function ClienteDetailContent({ cliente, certificados }: Props) {
@@ -70,6 +72,7 @@ export function ClienteDetailContent({ cliente, certificados }: Props) {
             <TabsTrigger value="tomadores">Tomadores</TabsTrigger>
             <TabsTrigger value="notas">Notas Fiscais</TabsTrigger>
             <TabsTrigger value="membros">Membros</TabsTrigger>
+            <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           </TabsList>
         </div>
 
@@ -91,6 +94,10 @@ export function ClienteDetailContent({ cliente, certificados }: Props) {
 
         <TabsContent value="membros">
           <TabMembros empresaId={cliente.id} />
+        </TabsContent>
+
+        <TabsContent value="webhooks">
+          <TabWebhooks empresaId={cliente.id} />
         </TabsContent>
       </Tabs>
     </motion.div>

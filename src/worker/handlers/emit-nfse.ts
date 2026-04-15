@@ -6,6 +6,7 @@ import { parsePfx } from "../../lib/nfse/pfx-loader";
 import { prepareSubmission } from "../../lib/nfse/prepare-submission";
 import { SefinClient } from "../../lib/nfse/sefin-client";
 import type { Dps } from "../../lib/nfse/types";
+import { sendNotificationEmail } from "../../lib/notifications-email";
 
 const prisma = new PrismaClient();
 
@@ -144,6 +145,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
           ultimoErro: result.mensagem,
         },
       });
+      await notifyNfseIssue(nfse, "rejeitada", result.mensagem ?? "Rejeitada sem mensagem");
       return { ok: false };
     }
   } catch (error) {
@@ -156,6 +158,43 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
         ultimoErro: msg,
       },
     });
+    await notifyNfseIssue(nfse, "erro", msg);
     throw error;
+  }
+}
+
+async function notifyNfseIssue(
+  nfse: { id: string; serie: string; numero: string; tomadorNome: string; createdById: string },
+  kind: "rejeitada" | "erro",
+  mensagem: string
+) {
+  try {
+    const title =
+      kind === "rejeitada"
+        ? `NFS-e ${nfse.serie}-${nfse.numero} rejeitada`
+        : `NFS-e ${nfse.serie}-${nfse.numero} com erro de processamento`;
+    const message = `Tomador ${nfse.tomadorNome}. Motivo: ${mensagem}`;
+    const link = `/nfse/${nfse.id}`;
+
+    const emailResult = await sendNotificationEmail({
+      userId: nfse.createdById,
+      type: "error",
+      title,
+      message,
+      link,
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: nfse.createdById,
+        type: "error",
+        title,
+        message,
+        link,
+        channelsSent: { inApp: true, email: emailResult.sent },
+      },
+    });
+  } catch (err) {
+    console.error(`[emit-nfse] notifyNfseIssue falhou`, err);
   }
 }

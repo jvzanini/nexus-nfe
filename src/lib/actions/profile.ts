@@ -22,6 +22,7 @@ const UpdateProfileSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres").max(100).optional(),
   avatarUrl: z.string().url().nullable().optional(),
   theme: z.enum(["dark", "light", "system"]).optional(),
+  emailNotifications: z.boolean().optional(),
 });
 
 const ChangePasswordSchema = z.object({
@@ -68,6 +69,8 @@ export async function updateProfile(
     if (data.name !== undefined) updateData.name = data.name;
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
     if (data.theme !== undefined) updateData.theme = data.theme;
+    if (data.emailNotifications !== undefined)
+      updateData.emailNotifications = data.emailNotifications;
 
     if (Object.keys(updateData).length === 0) {
       return { success: true };

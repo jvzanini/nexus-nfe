@@ -83,6 +83,7 @@ model User {
   isSuperAdmin Boolean      @default(false) @map("is_super_admin")
   avatarUrl    String?      @map("avatar_url")
   theme        Theme        @default(dark)
+  emailNotifications Boolean @default(true) @map("email_notifications")
   isActive     Boolean      @default(true) @map("is_active")
   invitedById  String?      @map("invited_by") @db.Uuid
   createdAt    DateTime     @default(now()) @map("created_at")

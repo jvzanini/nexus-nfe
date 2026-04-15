@@ -20,6 +20,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/components/providers/theme-provider";
@@ -37,6 +38,7 @@ interface ProfileContentProps {
     email: string;
     avatarUrl: string | null;
     theme: "dark" | "light" | "system";
+    emailNotifications: boolean;
   };
 }
 
@@ -100,6 +102,7 @@ export function ProfileContent({ initial }: ProfileContentProps) {
   const [name, setName] = useState(initial.name);
   const [email] = useState(initial.email);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initial.avatarUrl);
+  const [emailNotifications, setEmailNotifications] = useState<boolean>(initial.emailNotifications);
 
   // Email change
   const [newEmail, setNewEmail] = useState("");
@@ -203,6 +206,22 @@ export function ProfileContent({ initial }: ProfileContentProps) {
 
   function handleThemeChange(theme: "dark" | "light" | "system") {
     setTheme(theme);
+  }
+
+  function handleEmailNotificationsToggle(next: boolean) {
+    const previous = emailNotifications;
+    setEmailNotifications(next);
+    startTransition(async () => {
+      const result = await updateProfile({ emailNotifications: next });
+      if (!result.success) {
+        setEmailNotifications(previous);
+        toast.error(result.error || "Erro ao atualizar preferências");
+      } else {
+        toast.success(
+          next ? "Notificações por email ativadas" : "Notificações por email desativadas"
+        );
+      }
+    });
   }
 
   const themeOptions = [
@@ -489,6 +508,47 @@ export function ProfileContent({ initial }: ProfileContentProps) {
                 </button>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Notificações */}
+      <motion.div variants={itemVariants}>
+        <Card className="border-border bg-card/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-foreground text-base">
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              Notificações
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <label className="flex items-start justify-between gap-4 cursor-pointer">
+              <div>
+                <div className="text-sm font-medium text-foreground">
+                  Receber notificações por email
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Alertas de certificado expirando e NFS-e rejeitadas serão enviados
+                  ao seu email.
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={emailNotifications}
+                onClick={() => handleEmailNotificationsToggle(!emailNotifications)}
+                disabled={isPending}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer ${
+                  emailNotifications ? "bg-violet-600" : "bg-muted border border-border"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    emailNotifications ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </label>
           </CardContent>
         </Card>
       </motion.div>

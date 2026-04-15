@@ -153,7 +153,7 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 
 ### Em produção — https://nfe.nexusai360.com
 
-**Todas as 8 fases implementadas + API REST + Ajustes UI (139 testes passando)**
+**Todas as 8 fases + Fase 9 (notificações por email) + API REST + Ajustes UI (144 testes passando)**
 
 **Fases de implementação:**
 - ✅ Fase 1 — Esqueleto (login, users, profile, dashboard, settings, sidebar)
@@ -167,6 +167,7 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 - ✅ Fase 6 — Regras MEI (limite R$81k, faixas graduais, bloqueio >120%)
 - ✅ Fase 7 — Cancelamento + Substituição + Export XMLs
 - ✅ Fase 8 — Observabilidade + Toggle de ambiente
+- ✅ Fase 9 — Notificações por email (cert expirando + NFS-e rejeitada/erro, opt-out em /profile) — 2026-04-15
 
 **API REST v1 (~26 endpoints):**
 - ✅ Auth por API Key (X-API-Key)

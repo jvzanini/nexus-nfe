@@ -5,6 +5,7 @@
 // NÃO usar alias `@/`.
 
 import { prisma } from "../prisma";
+import { sendNotificationEmail } from "../notifications-email";
 
 export interface ExpirationCheckResult {
   totalChecked: number;
@@ -97,18 +98,31 @@ export async function checkCertificateExpiration(
 
     if (existing) continue;
 
+    const title = isExpired
+      ? "Certificado digital expirado"
+      : "Certificado digital expirando";
+    const message = isExpired
+      ? `O certificado de ${cert.clienteMei.razaoSocial} expirou e foi revogado automaticamente. Faça upload de um novo certificado pra continuar emitindo notas.`
+      : `O certificado de ${cert.clienteMei.razaoSocial} expira em ${diasRestantes} dia(s). Providencie a renovação.`;
+    const type: "error" | "warning" = isExpired ? "error" : "warning";
+    const link = `/clientes/${cert.clienteMeiId}`;
+
+    const emailResult = await sendNotificationEmail({
+      userId: recipientId,
+      type,
+      title,
+      message,
+      link,
+    });
+
     await prisma.notification.create({
       data: {
         userId: recipientId,
-        type: isExpired ? "error" : "warning",
-        title: isExpired
-          ? "Certificado digital expirado"
-          : "Certificado digital expirando",
-        message: isExpired
-          ? `O certificado de ${cert.clienteMei.razaoSocial} expirou e foi revogado automaticamente. Faça upload de um novo certificado pra continuar emitindo notas.`
-          : `O certificado de ${cert.clienteMei.razaoSocial} expira em ${diasRestantes} dia(s). Providencie a renovação.`,
-        link: `/clientes/${cert.clienteMeiId}`,
-        channelsSent: { inApp: true },
+        type,
+        title,
+        message,
+        link,
+        channelsSent: { inApp: true, email: emailResult.sent },
       },
     });
     notificationsCreated++;

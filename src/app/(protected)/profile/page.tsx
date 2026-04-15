@@ -1,10 +1,17 @@
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { ProfileContent } from "./profile-content";
 
 export const metadata = { title: "Meu perfil" };
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
+  const dbUser = user
+    ? await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { emailNotifications: true },
+      })
+    : null;
 
   const profile = {
     name: user?.name ?? "",
@@ -14,6 +21,7 @@ export default async function ProfilePage() {
       | "dark"
       | "light"
       | "system",
+    emailNotifications: dbUser?.emailNotifications ?? true,
   };
 
   return <ProfileContent initial={profile} />;

@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Loader2,
   BarChart3,
+  FileArchive,
 } from "lucide-react";
 import {
   BarChart,
@@ -36,6 +37,7 @@ import {
 import {
   gerarRelatorioEmissao,
   exportarRelatorioCsv,
+  exportarLoteZip,
   type RelatorioData,
   type RelatorioFilters,
 } from "@/lib/actions/relatorios";
@@ -128,6 +130,7 @@ export function RelatoriosContent({ empresas }: { empresas: Empresa[] }) {
   const [data, setData] = useState<RelatorioData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, startExporting] = useTransition();
+  const [zipping, startZipping] = useTransition();
 
   const empresaOptions = useMemo(
     () => [
@@ -183,6 +186,30 @@ export function RelatoriosContent({ empresas }: { empresas: Empresa[] }) {
     });
   }
 
+  function handleExportZip() {
+    startZipping(async () => {
+      const result = await exportarLoteZip(currentFilters());
+      if (!result.success || !result.data) {
+        toast.error(result.error || "Erro ao gerar ZIP");
+        return;
+      }
+      const bin = atob(result.data.zipBase64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const blob = new Blob([arr], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.download = `nfse-lote-${stamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`ZIP com ${result.data.quantidade} notas baixado`);
+    });
+  }
+
   const stats = data?.resumo;
 
   return (
@@ -210,6 +237,21 @@ export function RelatoriosContent({ empresas }: { empresas: Empresa[] }) {
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Atualizar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportZip}
+            disabled={zipping || !data || data.resumo.autorizadas === 0}
+            className="gap-2 cursor-pointer"
+            title="Baixa XMLs e PDFs das NFS-e autorizadas no período"
+          >
+            {zipping ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileArchive className="h-4 w-4" />
+            )}
+            Exportar ZIP
           </Button>
           <Button
             size="sm"

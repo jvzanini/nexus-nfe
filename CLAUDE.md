@@ -172,6 +172,7 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 - ✅ Fase 11 — Webhooks Outbound (eventos nfse.autorizada/rejeitada/cancelada via outbox, HMAC-SHA256, tab Webhooks por empresa, retry 30s) — 2026-04-15
 - ✅ Fase 12 — Importação em massa de tomadores via CSV (upload/paste, preview com válidos/inválidos/duplicados, upsert) — 2026-04-15
 - ✅ Fase 13 — Dashboard de Auditoria (`/auditoria` com filtros de período/recurso/ação/ator, tabela com detalhes em dialog, export CSV) — 2026-04-15
+- ✅ Fase 14 — Export lote ZIP (XMLs autorizados + PDFs DANFS-e por período em `/relatorios`) — 2026-04-15
 
 **API REST v1 (~26 endpoints):**
 - ✅ Auth por API Key (X-API-Key)

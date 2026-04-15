@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
+import { generateDanfsePdf } from "@/lib/nfse/pdf-generator";
 
 export interface RelatorioFilters {
   dataInicio?: string; // YYYY-MM-DD
@@ -259,5 +260,80 @@ export async function exportarRelatorioCsv(
   } catch (error) {
     console.error("[relatorios.exportarRelatorioCsv]", error);
     return { success: false, error: "Erro ao exportar CSV" };
+  }
+}
+
+/**
+ * Exporta um ZIP contendo XMLs autorizados e PDFs (DANFS-e) das NFS-e do
+ * período. Apenas notas com `chaveAcesso` (autorizadas) são incluídas.
+ * Limite de 1000 notas por export para evitar timeout.
+ */
+export async function exportarLoteZip(
+  filters: RelatorioFilters = {}
+): Promise<ActionResult<{ zipBase64: string; quantidade: number }>> {
+  try {
+    await requireRole("admin");
+
+    const where = buildWhere(filters);
+    where.status = "autorizada";
+
+    const nfses = await prisma.nfse.findMany({
+      where,
+      orderBy: { dataEmissao: "asc" },
+      take: 1000,
+      include: { clienteMei: true },
+    });
+
+    if (nfses.length === 0) {
+      return { success: false, error: "Nenhuma NFS-e autorizada no período" };
+    }
+
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+
+    for (const n of nfses) {
+      const baseName = `${n.clienteMei.cnpj}_${n.serie}-${n.numero}`;
+
+      if (n.xmlAutorizado) {
+        zip.file(`xmls/${baseName}.xml`, n.xmlAutorizado);
+      } else if (n.xmlAssinado) {
+        zip.file(`xmls/${baseName}.xml`, n.xmlAssinado);
+      }
+
+      try {
+        const pdf = generateDanfsePdf({
+          numero: n.numero,
+          serie: n.serie,
+          chaveAcesso: n.chaveAcesso,
+          dataEmissao: n.dataEmissao.toLocaleDateString("pt-BR"),
+          prestadorCnpj: n.clienteMei.cnpj,
+          prestadorNome: n.clienteMei.razaoSocial,
+          prestadorEndereco: `${n.clienteMei.logradouro}, ${n.clienteMei.numero} - ${n.clienteMei.bairro}, ${n.clienteMei.uf}`,
+          tomadorDocumento: n.tomadorDocumento,
+          tomadorNome: n.tomadorNome,
+          tomadorEmail: n.tomadorEmail,
+          codigoServico: n.codigoServico,
+          descricaoServico: n.descricaoServico,
+          valorServico: Number(n.valorServico),
+          aliquotaIss: Number(n.aliquotaIss),
+          valorIss: Number(n.valorIss),
+        });
+        zip.file(`pdfs/${baseName}.pdf`, pdf);
+      } catch (err) {
+        console.error(`[relatorios.exportarLoteZip] PDF falhou ${n.id}`, err);
+      }
+    }
+
+    const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+    return {
+      success: true,
+      data: {
+        zipBase64: buffer.toString("base64"),
+        quantidade: nfses.length,
+      },
+    };
+  } catch (error) {
+    console.error("[relatorios.exportarLoteZip]", error);
+    return { success: false, error: "Erro ao gerar ZIP" };
   }
 }

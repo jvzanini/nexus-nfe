@@ -26,7 +26,7 @@ services:
 
   worker:
     image: ghcr.io/jvzanini/nexus-nfe:latest
-    command: ["node", "worker-bundle.js"]
+    command: ["node", "worker/index.js"]
     environment:
       - DATABASE_URL=postgresql://nexus:${DB_PASSWORD}@db:5432/nexus_nfe
       - REDIS_URL=redis://redis:6379

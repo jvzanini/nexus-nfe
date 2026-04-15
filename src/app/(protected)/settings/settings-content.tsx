@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getAllSettings, updateSetting } from "@/lib/actions/settings";
+import { ApiKeysSection } from "./api-keys-section";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -526,6 +527,8 @@ export function SettingsContent() {
               </CardContent>
             </Card>
           </motion.div>
+
+          <ApiKeysSection />
         </motion.div>
       )}
     </div>

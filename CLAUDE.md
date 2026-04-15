@@ -67,7 +67,7 @@ Emissão automatizada de notas fiscais para empresas via GOV.BR
 **Blueprint:** github.com/jvzanini/nexus-blueprint (v2.0.0)
 **Tipo:** Interno Nexus AI
 **Criado em:** 2026-04-10
-**Login Produção:** nexusai360@gmail.com / ***REMOVED-ADMIN-PASSWORD***
+**Login Produção:** ver GitHub Secrets `ADMIN_EMAIL` / `ADMIN_PASSWORD`
 
 ## Metodologia
 Este projeto segue a metodologia do Nexus Blueprint:
@@ -124,10 +124,13 @@ Domínio: `nfe.nexusai360.com` (HTTPS via Traefik + Let's Encrypt)
 - `.github/workflows/update-stack-env.yml` — Atualiza env vars da stack (manual)
 - `.github/workflows/run-seed.yml` — Roda migrations + seed no container (manual)
 
-### Env vars de produção (no Portainer)
+### Env vars de produção (no Portainer / GitHub Secrets)
+Todas ficam em GitHub Secrets e são injetadas pelos workflows create-stack / update-stack-env:
 - `DB_PASSWORD`, `NEXTAUTH_SECRET`, `ENCRYPTION_KEY`
-- `RESEND_API_KEY=***REMOVED-RESEND-KEY***`
-- `ADMIN_EMAIL=nexusai360@gmail.com`, `ADMIN_PASSWORD=***REMOVED-ADMIN-PASSWORD***`
+- `RESEND_API_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+- `PORTAINER_URL`, `PORTAINER_TOKEN`, `GHCR_TOKEN`
+
+Nunca escreva os valores em claro no repo — sempre via `${{ secrets.XXX }}`.
 
 ### Entrypoint do container
 O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` antes do app iniciar. O `docker/seed-prod.js` cria o super admin se não existir.

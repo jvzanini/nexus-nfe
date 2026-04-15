@@ -10,6 +10,12 @@ jobs:
       PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
       PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -51,14 +57,17 @@ jobs:
         run: |
           COMPOSE=$(cat docker-compose.yml | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))")
 
-          ENV_VARS='[
-            {"name":"DB_PASSWORD","value":"***REMOVED-DB-PASSWORD***"},
-            {"name":"NEXTAUTH_SECRET","value":"***REMOVED-NEXTAUTH-SECRET***"},
-            {"name":"ENCRYPTION_KEY","value":"***REMOVED-ENCRYPTION-KEY***"},
-            {"name":"RESEND_API_KEY","value":"***REMOVED-RESEND-KEY***"},
-            {"name":"ADMIN_EMAIL","value":"nexusai360@gmail.com"},
-            {"name":"ADMIN_PASSWORD","value":"***REMOVED-ADMIN-PASSWORD***"}
-          ]'
+          ENV_VARS=$(python3 -c "
+          import json, os
+          print(json.dumps([
+              {'name':'DB_PASSWORD','value':os.environ['DB_PASSWORD']},
+              {'name':'NEXTAUTH_SECRET','value':os.environ['NEXTAUTH_SECRET']},
+              {'name':'ENCRYPTION_KEY','value':os.environ['ENCRYPTION_KEY']},
+              {'name':'RESEND_API_KEY','value':os.environ['RESEND_API_KEY']},
+              {'name':'ADMIN_EMAIL','value':os.environ['ADMIN_EMAIL']},
+              {'name':'ADMIN_PASSWORD','value':os.environ['ADMIN_PASSWORD']},
+          ]))
+          ")
 
           BODY=$(python3 -c "
           import json

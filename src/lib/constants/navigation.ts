@@ -9,6 +9,7 @@ import {
   Building2,
   Code2,
   BarChart3,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,12 @@ export const RESTRICTED_NAV_ITEMS: NavItem[] = [
     label: "Usuários",
     href: "/users",
     icon: Users,
+    allowedRoles: ["super_admin", "admin"],
+  },
+  {
+    label: "Auditoria",
+    href: "/auditoria",
+    icon: Shield,
     allowedRoles: ["super_admin", "admin"],
   },
   {

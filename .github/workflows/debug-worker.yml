@@ -1,0 +1,52 @@
+name: Debug Worker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    env:
+      PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+      PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+    steps:
+      - name: Fetch worker state and logs
+        run: |
+          set -e
+          curl --insecure -s -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/services" > /tmp/services.json
+          curl --insecure -s -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/tasks" > /tmp/tasks.json
+
+          SVC_ID=$(python3 -c "
+          import json
+          ss = json.load(open('/tmp/services.json'))
+          print(next((s['ID'] for s in ss if s['Spec']['Name']=='nexus-nfe_worker'),''))
+          ")
+          echo "worker service id: $SVC_ID"
+
+          echo ""
+          echo "=== Últimas tasks do worker ==="
+          python3 <<EOF
+          import json
+          tasks = json.load(open('/tmp/tasks.json'))
+          svc_id = "$SVC_ID"
+          wt = [t for t in tasks if t.get('ServiceID') == svc_id]
+          wt.sort(key=lambda t: t.get('CreatedAt',''), reverse=True)
+          for t in wt[:5]:
+              print('---')
+              print('TaskID:', t['ID'])
+              print('State:', t.get('Status',{}).get('State'))
+              print('Message:', t.get('Status',{}).get('Message'))
+              print('Err:', t.get('Status',{}).get('Err'))
+              cs = t.get('Status',{}).get('ContainerStatus',{})
+              print('ContainerID:', cs.get('ContainerID'))
+              print('ExitCode:', cs.get('ExitCode'))
+              print('CreatedAt:', t.get('CreatedAt'))
+          EOF
+
+          echo ""
+          echo "=== Logs do serviço nexus-nfe_worker (300 linhas) ==="
+          curl --insecure -s \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/services/${SVC_ID}/logs?stdout=true&stderr=true&tail=300&timestamps=true" | cat -v | tail -300 || true

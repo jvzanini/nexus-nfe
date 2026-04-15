@@ -7,6 +7,7 @@ import { prepareSubmission } from "../../lib/nfse/prepare-submission";
 import { SefinClient } from "../../lib/nfse/sefin-client";
 import type { Dps } from "../../lib/nfse/types";
 import { sendNotificationEmail } from "../../lib/notifications-email";
+import { atualizarStatusItemLote } from "../../lib/nfse-lote/status-sync";
 
 async function enqueueWebhookEvent(
   event: "nfse.autorizada" | "nfse.rejeitada" | "nfse.cancelada",
@@ -87,6 +88,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
     where: { id: nfseId },
     data: { status: "processando" },
   });
+  await atualizarStatusItemLote(prisma, nfseId, "processando");
 
   try {
     const pfxBase64 = decrypt(cert.pfxEncrypted);
@@ -186,6 +188,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
         tomadorNome: updated.tomadorNome,
         tomadorDocumento: updated.tomadorDocumento,
       });
+      await atualizarStatusItemLote(prisma, nfseId, "autorizada");
       return { ok: true, chaveAcesso: result.chaveAcesso };
     } else {
       await prisma.nfse.update({
@@ -211,6 +214,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
         tomadorNome: nfse.tomadorNome,
         tomadorDocumento: nfse.tomadorDocumento,
       });
+      await atualizarStatusItemLote(prisma, nfseId, "rejeitada", result.mensagem);
       return { ok: false };
     }
   } catch (error) {
@@ -224,6 +228,7 @@ export async function handleEmitNfse(job: Job<EmitNfseJobData>): Promise<{ ok: b
       },
     });
     await notifyNfseIssue(nfse, "erro", msg);
+    await atualizarStatusItemLote(prisma, nfseId, "erro", msg);
     throw error;
   }
 }

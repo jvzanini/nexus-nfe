@@ -176,6 +176,7 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 - ✅ Fase 15 — Gestão self-service de API Keys em `/settings` (criar/revogar, chave exibida uma única vez) — 2026-04-15
 - ✅ Fase 16 — API REST de webhooks (GET/POST `/api/v1/empresas/[id]/webhooks`, PUT/DELETE `/[webhookId]`, rotação de secret) — 2026-04-15
 - ✅ Fase 17 — Portal público de NFS-e (`/v/[chave]` sem login + `/api/public/nfse/[chave]/pdf`, botão "Link público" na tela de detalhe) — 2026-04-15
+- ✅ Fase 18 — Emissão em lote de NFS-e via CSV (`/nfse/lote` wizard 3 steps + detalhe com polling + reprocessar rejeitadas + export resultado CSV; limite padrão 500 itens/lote, 5 lotes simultâneos por empresa) — 2026-04-15
 
 **API REST v1 (~26 endpoints):**
 - ✅ Auth por API Key (X-API-Key)
@@ -263,6 +264,7 @@ Todas as Server Actions ficam em `src/lib/actions/`:
 - `dashboard.ts` — Dados do dashboard (stats, gráfico, recentes)
 - `empresa-memberships.ts` — Gestão de membros por empresa
 - `grupos-empresariais.ts` — Grupos empresariais de tomadores
+- `nfse-lote.ts` — Emissão em lote via CSV (preview, criar, listar, detalhe, cancelar, reprocessar, exportar)
 
 ## API REST v1
 Documentação completa em `/api-docs` (dentro da plataforma) e `docs/api/README.md`.

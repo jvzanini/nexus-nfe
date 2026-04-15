@@ -400,6 +400,16 @@ export function NfseContent() {
           >
             <CircleHelp className="h-4 w-4" />
           </Button>
+          <Link href="/nfse/lote">
+            <Button
+              variant="outline"
+              className="gap-2 cursor-pointer transition-all duration-200"
+              title="Emitir em lote via CSV"
+            >
+              <Download className="h-4 w-4 rotate-180" />
+              <span className="hidden sm:inline">Emitir em lote</span>
+            </Button>
+          </Link>
           <Link href="/nfse/nova">
             <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer transition-all duration-200" title="Ctrl+N">
               <Plus className="h-4 w-4" />

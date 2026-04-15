@@ -248,6 +248,7 @@ model ClienteMei {
   memberships         EmpresaMembership[]
   gruposEmpresariais  GrupoEmpresarial[]
   webhookEndpoints    WebhookEndpoint[]
+  lotes               NfseLote[]
 
   @@map("clientes_mei")
 }
@@ -336,7 +337,8 @@ model Nfse {
   updatedAt          DateTime     @updatedAt @map("updated_at")
   createdById        String       @map("created_by") @db.Uuid
 
-  clienteMei ClienteMei @relation(fields: [clienteMeiId], references: [id], onDelete: Restrict)
+  clienteMei ClienteMei     @relation(fields: [clienteMeiId], references: [id], onDelete: Restrict)
+  loteItem   NfseLoteItem?
 
   @@index([clienteMeiId, createdAt(sort: Desc)], name: "idx_nfse_cliente")
   @@index([status, createdAt], name: "idx_nfse_status")
@@ -449,4 +451,70 @@ model GrupoEmpresarial {
 
   @@unique([clienteMeiId, nome])
   @@map("grupos_empresariais")
+}
+
+// ============================================================
+// DOMÍNIO — Emissão em lote (Fase 18)
+// ============================================================
+
+enum NfseLoteStatus {
+  pendente
+  processando
+  concluido
+  cancelado
+}
+
+enum NfseLoteItemStatus {
+  pendente
+  processando
+  autorizado
+  rejeitado
+  erro
+  cancelado
+}
+
+model NfseLote {
+  id            String         @id @default(uuid()) @db.Uuid
+  clienteMeiId  String         @map("cliente_mei_id") @db.Uuid
+  status        NfseLoteStatus @default(pendente)
+  totalItens    Int            @map("total_itens")
+  nomeArquivo   String?        @map("nome_arquivo")
+  servicoPadrao Json           @map("servico_padrao") @db.JsonB
+  createdById   String         @map("created_by") @db.Uuid
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  finalizadoEm  DateTime?      @map("finalizado_em")
+
+  clienteMei ClienteMei      @relation(fields: [clienteMeiId], references: [id], onDelete: Restrict)
+  itens      NfseLoteItem[]
+
+  @@index([clienteMeiId, createdAt(sort: Desc)], name: "idx_lote_cliente")
+  @@index([status], name: "idx_lote_status")
+  @@map("nfse_lotes")
+}
+
+model NfseLoteItem {
+  id               String             @id @default(uuid()) @db.Uuid
+  loteId           String             @map("lote_id") @db.Uuid
+  nfseId           String?            @unique @map("nfse_id") @db.Uuid
+  nfseAnteriorId   String?            @map("nfse_anterior_id") @db.Uuid
+  queueJobId       String?            @map("queue_job_id")
+  linhaCsv         Int                @map("linha_csv")
+  status           NfseLoteItemStatus @default(pendente)
+  tomadorDocumento String             @map("tomador_documento")
+  tomadorNome      String             @map("tomador_nome")
+  tomadorEmail     String?            @map("tomador_email")
+  valorServico     Decimal            @map("valor_servico") @db.Decimal(15, 2)
+  descricaoServico String             @map("descricao_servico") @db.Text
+  dataCompetencia  DateTime           @map("data_competencia") @db.Date
+  erro             String?            @db.Text
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  lote NfseLote @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  nfse Nfse?    @relation(fields: [nfseId], references: [id], onDelete: SetNull)
+
+  @@index([loteId, linhaCsv], name: "idx_lote_item_ordem")
+  @@index([status], name: "idx_lote_item_status")
+  @@map("nfse_lote_itens")
 }

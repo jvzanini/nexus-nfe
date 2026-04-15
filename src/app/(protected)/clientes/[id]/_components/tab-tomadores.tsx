@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2, Plus, Trash2, Users, ChevronUp, Search, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { toast } from "sonner";
 import {
   listarTomadoresFavoritos,
@@ -80,6 +81,7 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
   const [deleting, startDeleting] = useTransition();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filterTomadorId, setFilterTomadorId] = useState("");
 
   // Grupos empresariais
   const [grupos, setGrupos] = useState<GrupoEmpresarialItem[]>([]);
@@ -218,7 +220,30 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
     });
   }
 
+  const tomadoresRecentesIds = useMemo(() => {
+    return [...tomadores]
+      .filter((t) => t.ultimoUso)
+      .sort(
+        (a, b) =>
+          new Date(b.ultimoUso!).getTime() - new Date(a.ultimoUso!).getTime()
+      )
+      .slice(0, 3)
+      .map((t) => t.id);
+  }, [tomadores]);
+
+  const tomadorOptions = useMemo(() => {
+    return [
+      { value: "", label: "Todos os tomadores" },
+      ...tomadores.map((t) => ({
+        value: t.id,
+        label: t.nome,
+        description: tomadoresRecentesIds.includes(t.id) ? "Recente" : undefined,
+      })),
+    ];
+  }, [tomadores, tomadoresRecentesIds]);
+
   const filtered = tomadores.filter((t) => {
+    if (filterTomadorId && t.id !== filterTomadorId) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -388,16 +413,26 @@ export function TabTomadores({ empresaId }: TabTomadoresProps) {
     <div className="space-y-4">
       {formSection}
 
-      {/* Busca */}
+      {/* Busca + Filtro */}
       {tomadores.length > 0 && (
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar tomador..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar tomador..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="w-full sm:w-64">
+            <CustomSelect
+              value={filterTomadorId}
+              onChange={setFilterTomadorId}
+              options={tomadorOptions}
+              placeholder="Filtrar tomador"
+            />
+          </div>
         </div>
       )}
 

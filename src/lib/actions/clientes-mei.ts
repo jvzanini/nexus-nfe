@@ -16,6 +16,7 @@ export interface ClienteMeiListItem {
   cnpj: string;
   razaoSocial: string;
   nomeFantasia: string | null;
+  logoUrl: string | null;
   email: string | null;
   municipioIbge: string;
   uf: string;
@@ -92,6 +93,7 @@ export async function listClientesMei(): Promise<
         cnpj: c.cnpj,
         razaoSocial: c.razaoSocial,
         nomeFantasia: c.nomeFantasia,
+        logoUrl: c.logoUrl,
         email: c.email,
         municipioIbge: c.municipioIbge,
         uf: c.uf,
@@ -146,6 +148,7 @@ export async function getClienteMei(
         cnpj: c.cnpj,
         razaoSocial: c.razaoSocial,
         nomeFantasia: c.nomeFantasia,
+        logoUrl: c.logoUrl,
         inscricaoMunicipal: c.inscricaoMunicipal,
         email: c.email,
         telefone: c.telefone,

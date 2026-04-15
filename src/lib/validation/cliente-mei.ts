@@ -62,6 +62,7 @@ export const createClienteMeiSchema = z.object({
   inscricaoMunicipal: z.string().trim().max(30).optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
   email: z.string().trim().toLowerCase().email("E-mail inválido").optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
   telefone: z.string().trim().max(20).optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
+  logoUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
   cep: cepSchema,
   logradouro: z.string().trim().min(2, "Logradouro obrigatório").max(200),
   numero: z.string().trim().min(1, "Número obrigatório").max(20),

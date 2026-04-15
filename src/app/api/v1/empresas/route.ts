@@ -27,6 +27,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
       skip: offset,
       select: {
         id: true, cnpj: true, razaoSocial: true, nomeFantasia: true,
+        logoUrl: true,
         email: true, telefone: true, municipioIbge: true, uf: true,
         serieDpsAtual: true, ultimoNumeroDps: true, isActive: true,
         createdAt: true,
@@ -47,7 +48,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     const cert = c.certificados[0];
     return {
       id: c.id, cnpj: c.cnpj, razaoSocial: c.razaoSocial,
-      nomeFantasia: c.nomeFantasia, email: c.email, telefone: c.telefone,
+      nomeFantasia: c.nomeFantasia, logoUrl: c.logoUrl, email: c.email, telefone: c.telefone,
       municipioIbge: c.municipioIbge, uf: c.uf,
       serieDpsAtual: c.serieDpsAtual, ultimoNumeroDps: c.ultimoNumeroDps,
       isActive: c.isActive, createdAt: c.createdAt,
@@ -88,6 +89,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       cnpj: cnpjClean,
       razaoSocial: body.razaoSocial,
       nomeFantasia: body.nomeFantasia ?? null,
+      logoUrl: body.logoUrl ?? null,
       inscricaoMunicipal: body.inscricaoMunicipal ?? null,
       email: body.email ?? null,
       telefone: body.telefone ?? null,

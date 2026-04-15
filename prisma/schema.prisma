@@ -219,6 +219,7 @@ model ClienteMei {
   cnpj                String              @unique
   razaoSocial         String              @map("razao_social")
   nomeFantasia        String?             @map("nome_fantasia")
+  logoUrl             String?             @map("logo_url")
   inscricaoMunicipal  String?             @map("inscricao_municipal")
   email               String?
   telefone            String?

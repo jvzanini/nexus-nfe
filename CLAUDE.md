@@ -1,5 +1,64 @@
 # Nexus NFE
 
+## LEI ABSOLUTA — Metodologia de Desenvolvimento Autônomo
+
+**Esta seção é LEI. Toda sessão neste projeto segue isto, a menos que o usuário diga o contrário explicitamente.**
+
+### Modo autônomo
+- O usuário autorizou desenvolvimento **ponta a ponta sem aprovações intermediárias**.
+- Ao iniciar uma sessão neste projeto, identificar a próxima fase pendente e executar até o fim, passando para a próxima fase sozinho.
+- Não pedir confirmação. Não pausar pedindo "posso continuar?". Apenas seguir.
+
+### Fluxo obrigatório por fase (usando skill `superpowers`)
+Para CADA fase de desenvolvimento, executar nesta ordem exata:
+
+1. **Brainstorm** (`superpowers:brainstorming`) — entender o que precisa ser feito.
+2. **Spec v1** (`superpowers:writing-plans` ou similar) — gerar a spec inicial.
+3. **Review 1 da spec** — verificar: esqueci algo? estou repetitivo? estou furando identidade visual/componentes existentes? o que posso melhorar?
+4. **Spec v2** — refazer com base no review 1.
+5. **Review 2 da spec** — pente fino mais profundo, verificar implementação completa.
+6. **Spec final (v3)** — versão consolidada.
+7. **Plan v1** (`superpowers:writing-plans`) — muito detalhado, muitas tasks, bem segmentado, sem economia em detalhes.
+8. **Review 1 do plan** — pente fino, tudo certinho.
+9. **Plan v2** — refazer com base no review.
+10. **Review 2 do plan** — pente fino ainda mais criterioso.
+11. **Plan final (v3)**.
+12. **Implementação** (`superpowers:executing-plans` / developer) — executar tasks em ordem.
+13. **Testes** — rodar stack de testes, garantir verde.
+14. **Ao finalizar a fase:** atualizar docs, CLAUDE.md, memória, commits, deploy. Só então partir pra próxima fase.
+
+### UI/Layout
+- Toda UI usa `ui-ux-pro-max` obrigatoriamente, **respeitando consistência** da plataforma (design system existente, sidebar, cores, componentes shadcn, CustomSelect, padrão Roteador Webhook).
+- Nunca fugir do padrão visual já construído.
+
+### Protocolo de repositório (GitHub rate limit / cobrança)
+Se ao dar push/deploy o GitHub retornar erro de cobrança, rate limit ou limite de uso gratuito por ser repositório privado:
+
+1. **Autorizado sem confirmação** a executar o protocolo abaixo.
+2. **Double check de segurança em 3 etapas:**
+   - Avaliação 1: varrer repo atrás de `.env`, chaves, credenciais, senhas, tokens, certificados, API keys.
+   - Review 1 da avaliação.
+   - Avaliação 2: pente fino mais profundo.
+   - Review 2 da avaliação.
+   - Avaliação 3 (conclusão final): decisão.
+3. Tudo que estiver exposto: mover pra `.gitignore`, remover do histórico se necessário, rotacionar.
+4. Após confirmação na 3ª avaliação de que não há exposição: **tornar repositório público** sem pedir autorização.
+5. Só volta a privado quando o usuário pedir explicitamente.
+
+### Resolução autônoma de problemas
+- Qualquer erro, falha, dúvida: **resolver sozinho**, sem perguntar ao usuário.
+- Se bloqueio persistir em uma etapa: **pular** pra próxima etapa/fase, anotar o bloqueio em `docs/superpowers/bloqueios.md` e na memória.
+- **Proibido:** agendar `ScheduleWakeup`, dormir, standby, loops de polling. Sempre avançar com trabalho útil em paralelo enquanto algo roda (build, testes).
+- Build/deploy demorado: seguir implementando a próxima task em paralelo, não ficar esperando.
+
+### Dependências externas (API keys, integrações, decisões humanas)
+- Funcionalidade depende de chave de API que não tenho, integração externa bloqueada, ou decisão do usuário: **implementar até onde der** (estrutura, mocks, interfaces), marcar o ponto como `[AGUARDANDO: <descrição>]` em `docs/superpowers/bloqueios.md`, e **seguir com outra fase**. Nunca empacar.
+- O usuário confia na recomendação — quando houver escolha técnica, decidir e documentar o porquê.
+
+### Silêncio e comunicação
+- Trabalhar em silêncio, narração mínima (padrão global do usuário).
+- Relatar apenas: bloqueios, informações críticas, resumo final de fase.
+
 ## Projeto
 Emissão automatizada de notas fiscais para empresas via GOV.BR
 
@@ -140,9 +199,9 @@ O `docker/entrypoint.sh` roda `prisma migrate deploy` + `node seed-prod.js` ante
 **Ainda não feito:**
 - ✅ Dashboard alinhado com referência (sininho + filtro por empresa)
 - ✅ Tabs da empresa mais sutis (estilo ajustado)
-- Ícone da empresa no card/detalhe: usar o exato do Roteador
+- ✅ Ícone da empresa no card/detalhe: logo (`logoUrl`) com fallback Building2 1:1 Roteador (2026-04-15)
 - ✅ Tab Notas dentro da empresa com filtros/agrupamento da listagem principal
-- Tab Tomadores: filtro de busca com 3 recentes
+- ✅ Tab Tomadores: filtro de busca com 3 recentes via CustomSelect (2026-04-15)
 - ✅ Listagem NFS-e com status em CustomSelect colorido
 - ✅ Agrupamento com botões destacados
 - ✅ Coluna Ações alinhada em todos os cenários tratados

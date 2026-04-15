@@ -37,7 +37,7 @@ export const GET = withErrorHandler(async (
 
   return apiSuccess({
     id: c.id, cnpj: c.cnpj, razaoSocial: c.razaoSocial,
-    nomeFantasia: c.nomeFantasia, inscricaoMunicipal: c.inscricaoMunicipal,
+    nomeFantasia: c.nomeFantasia, logoUrl: c.logoUrl, inscricaoMunicipal: c.inscricaoMunicipal,
     email: c.email, telefone: c.telefone,
     endereco: { cep: c.cep, logradouro: c.logradouro, numero: c.numero, complemento: c.complemento, bairro: c.bairro, municipioIbge: c.municipioIbge, uf: c.uf },
     serieDpsAtual: c.serieDpsAtual, ultimoNumeroDps: c.ultimoNumeroDps,
@@ -74,6 +74,7 @@ export const PUT = withErrorHandler(async (
   const updateData: Record<string, unknown> = {};
   if (body.razaoSocial) updateData.razaoSocial = body.razaoSocial;
   if (body.nomeFantasia !== undefined) updateData.nomeFantasia = body.nomeFantasia || null;
+  if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl || null;
   if (body.email !== undefined) updateData.email = body.email || null;
   if (body.telefone !== undefined) updateData.telefone = body.telefone || null;
   if (body.cep) updateData.cep = body.cep.replace(/\D/g, "");

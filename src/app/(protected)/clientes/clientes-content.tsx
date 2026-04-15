@@ -72,6 +72,7 @@ interface ClienteFormData {
   cnpj: string;
   razaoSocial: string;
   nomeFantasia: string;
+  logoUrl: string;
   inscricaoMunicipal: string;
   email: string;
   telefone: string;
@@ -90,6 +91,7 @@ const emptyForm: ClienteFormData = {
   cnpj: "",
   razaoSocial: "",
   nomeFantasia: "",
+  logoUrl: "",
   inscricaoMunicipal: "",
   email: "",
   telefone: "",
@@ -211,6 +213,8 @@ function EmpresaCard({
   cliente: ClienteMeiListItem;
 }) {
   const router = useRouter();
+  const [logoBroken, setLogoBroken] = useState(false);
+  const showLogo = !!cliente.logoUrl && !logoBroken;
 
   return (
     <Card
@@ -226,9 +230,18 @@ function EmpresaCard({
         {/* Header: icon + nome + status */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-muted border border-border/50 flex items-center justify-center shrink-0">
-              <Building2 className="w-5 h-5 text-muted-foreground" />
-            </div>
+            {showLogo ? (
+              <img
+                src={cliente.logoUrl!}
+                alt={`Logo ${cliente.razaoSocial}`}
+                onError={() => setLogoBroken(true)}
+                className="w-11 h-11 rounded-xl object-cover ring-1 ring-border/50 shrink-0"
+              />
+            ) : (
+              <div className="w-11 h-11 rounded-xl bg-muted border border-border/50 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-muted-foreground" />
+              </div>
+            )}
             <div>
               <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground transition-colors">
                 {cliente.razaoSocial}
@@ -317,6 +330,7 @@ export function ClientesContent() {
         cnpj: formatCnpj(d.cnpj),
         razaoSocial: d.razaoSocial,
         nomeFantasia: d.nomeFantasia ?? "",
+        logoUrl: d.logoUrl ?? "",
         inscricaoMunicipal: d.inscricaoMunicipal ?? "",
         email: d.email ?? "",
         telefone: d.telefone ?? "",
@@ -376,6 +390,7 @@ export function ClientesContent() {
       cnpj: form.cnpj.replace(/\D/g, ""),
       razaoSocial: form.razaoSocial.trim(),
       nomeFantasia: form.nomeFantasia.trim() || undefined,
+      logoUrl: form.logoUrl.trim() || undefined,
       inscricaoMunicipal: form.inscricaoMunicipal.trim() || undefined,
       email: form.email.trim() || undefined,
       telefone: form.telefone.trim() || undefined,
@@ -488,6 +503,19 @@ export function ClientesContent() {
             onChange={(e) =>
               setForm((f) => ({ ...f, nomeFantasia: e.target.value }))
             }
+            className="bg-muted/50 border-border text-foreground"
+          />
+        </Field>
+
+        {/* Logo URL (opcional) */}
+        <Field label="Logo URL (opcional)">
+          <Input
+            type="url"
+            value={form.logoUrl}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, logoUrl: e.target.value }))
+            }
+            placeholder="https://exemplo.com/logo.png"
             className="bg-muted/50 border-border text-foreground"
           />
         </Field>

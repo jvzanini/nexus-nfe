@@ -53,6 +53,7 @@ export function EditEmpresaDialog({
     const nomeFantasia = formData.get("nomeFantasia") as string;
     const email = formData.get("email") as string;
     const telefone = formData.get("telefone") as string;
+    const logoUrl = formData.get("logoUrl") as string;
 
     startTransition(async () => {
       const result = await updateClienteMei(empresa.id, {
@@ -60,6 +61,7 @@ export function EditEmpresaDialog({
         nomeFantasia: nomeFantasia || undefined,
         email: email || undefined,
         telefone: telefone || undefined,
+        logoUrl: logoUrl || undefined,
       });
 
       if (result.success) {
@@ -161,6 +163,20 @@ export function EditEmpresaDialog({
               defaultValue={empresa.telefone ?? ""}
               maxLength={20}
               placeholder="(11) 99999-9999"
+              className={inputClasses}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-logoUrl" className="text-foreground/80">
+              Logo URL
+            </Label>
+            <Input
+              id="edit-logoUrl"
+              name="logoUrl"
+              type="url"
+              defaultValue={empresa.logoUrl ?? ""}
+              placeholder="https://exemplo.com/logo.png"
               className={inputClasses}
             />
           </div>

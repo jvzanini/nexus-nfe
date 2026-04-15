@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Building2, ArrowLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ClienteMeiDetail } from "@/lib/actions/clientes-mei";
@@ -20,6 +21,9 @@ interface EmpresaHeaderProps {
 }
 
 export function EmpresaHeader({ empresa, onEdit }: EmpresaHeaderProps) {
+  const [logoBroken, setLogoBroken] = useState(false);
+  const showLogo = !!empresa.logoUrl && !logoBroken;
+
   return (
     <div className="space-y-4">
       {/* Breadcrumb */}
@@ -34,9 +38,18 @@ export function EmpresaHeader({ empresa, onEdit }: EmpresaHeaderProps) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-xl bg-muted border border-border/50 flex items-center justify-center">
-            <Building2 className="w-6 h-6 sm:w-7 sm:h-7 text-muted-foreground" />
-          </div>
+          {showLogo ? (
+            <img
+              src={empresa.logoUrl!}
+              alt={`Logo ${empresa.razaoSocial}`}
+              onError={() => setLogoBroken(true)}
+              className="w-14 h-14 shrink-0 rounded-xl object-cover border border-border"
+            />
+          ) : (
+            <div className="w-14 h-14 shrink-0 rounded-xl bg-muted border border-border/50 flex items-center justify-center">
+              <Building2 className="w-7 h-7 text-muted-foreground" />
+            </div>
+          )}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">

@@ -1,0 +1,50 @@
+name: Debug Worker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    env:
+      PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+      PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+    steps:
+      - name: Fetch worker logs and state
+        run: |
+          set -e
+          echo "=== Tasks do serviço nexus-nfe_worker ==="
+          TASKS=$(curl --insecure -s \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/tasks")
+
+          echo "$TASKS" | python3 -c "
+          import sys, json
+          tasks = json.load(sys.stdin)
+          worker = [t for t in tasks if t.get('Spec', {}).get('ContainerSpec', {}).get('Image', '').find('nexus-nfe') >= 0]
+          # filtra por nome do serviço via ServiceID
+          services = json.loads('''$(curl --insecure -s -H "X-API-Key: ${PORTAINER_TOKEN}" "${PORTAINER_URL}/api/endpoints/1/docker/services")''')
+          worker_svc_id = next((s['ID'] for s in services if s['Spec']['Name'] == 'nexus-nfe_worker'), None)
+          print('worker service id:', worker_svc_id)
+          worker_tasks = [t for t in tasks if t.get('ServiceID') == worker_svc_id]
+          worker_tasks.sort(key=lambda t: t.get('CreatedAt',''), reverse=True)
+          for t in worker_tasks[:5]:
+              print('---')
+              print('TaskID:', t['ID'])
+              print('State:', t.get('Status',{}).get('State'))
+              print('Message:', t.get('Status',{}).get('Message'))
+              print('Err:', t.get('Status',{}).get('Err'))
+              print('ContainerID:', t.get('Status',{}).get('ContainerStatus',{}).get('ContainerID'))
+              print('ExitCode:', t.get('Status',{}).get('ContainerStatus',{}).get('ExitCode'))
+              print('CreatedAt:', t.get('CreatedAt'))
+          "
+
+          echo ""
+          echo "=== Logs do serviço nexus-nfe_worker (últimas 300 linhas) ==="
+          SVC_ID=$(curl --insecure -s -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/services" | \
+            python3 -c "import sys,json; ss=json.load(sys.stdin); print(next((s['ID'] for s in ss if s['Spec']['Name']=='nexus-nfe_worker'),''))")
+
+          curl --insecure -s \
+            -H "X-API-Key: ${PORTAINER_TOKEN}" \
+            "${PORTAINER_URL}/api/endpoints/1/docker/services/${SVC_ID}/logs?stdout=true&stderr=true&tail=300&timestamps=true" || true
